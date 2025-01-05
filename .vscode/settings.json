@@ -1,0 +1,8 @@
+{
+  "deno.enable": true,
+  "deno.enablePaths": [
+    "./supabase-testnet",
+    "./supabase-mainnet",
+    "./server"
+  ]
+}
