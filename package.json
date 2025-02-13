@@ -1,0 +1,26 @@
+{
+  "scripts": {
+    "webpack-dev": "node node_modules/webpack-cli/bin/cli.js --mode development --watch --config webpack.config.dev.ts",
+    "webpack-prod": "node node_modules/webpack-cli/bin/cli.js --mode production --config webpack.config.prod.ts"
+  },
+  "type": "module",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.5",
+    "@types/uuid": "^10.0.0",
+    "@types/webpack": "^5.28.5",
+    "css-loader": "^7.1.2",
+    "less": "^4.2.0",
+    "less-loader": "^12.2.0",
+    "maxrects-packer": "^2.7.3",
+    "mini-css-extract-plugin": "^2.9.1",
+    "react": "^18.3.1",
+    "ts-loader": "^9.5.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3",
+    "webpack": "^5.95.0",
+    "webpack-cli": "^5.1.4",
+    "yaml-loader": "^0.8.1"
+  }
+}
