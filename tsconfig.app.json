@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "jsx": "react",
+    "target": "ESNext",
+    "module": "ESNext",
+    "noImplicitAny": true,
+    "preserveConstEnums": true,
+    "inlineSources": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "lib": [
+      "DOM",
+      "ESNext",
+      "ScriptHost"
+    ],
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "moduleResolution": "node",
+    "skipLibCheck": true,
+    "strict": true,
+    "rootDir": "./app",
+    "outDir": "dist"
+  },
+  "include": [
+    "./app",
+  ],
+  "exclude": [
+    "node_modules",
+    "**/dist/**",
+    "worker",
+    "firebase-messaging-sw",
+    "public"
+  ],
+}
