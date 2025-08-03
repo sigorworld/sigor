@@ -20,15 +20,14 @@ module.exports = {
         exclude: /node_modules/
       },
       {
-        test: /\.less$/,
+        test: /\.css$/,
         use: [
           MiniCssExtractPlugin.loader, {
             loader: "css-loader",
             options: {
               url: false,
             },
-          },
-          'less-loader'
+          }
         ]
       },
       {
