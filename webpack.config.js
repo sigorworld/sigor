@@ -50,6 +50,16 @@ module.exports = {
   },
   plugins: [
     new MiniCssExtractPlugin({ filename: 'styles.css' }),
+    new webpack.DefinePlugin({
+      'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+      APP_NAME: JSON.stringify('Sigor'),
+      WALLET_CONNECT_PROJECT_ID: JSON.stringify('7aa47ae0ec2e26682abd93948a24e755'),
+      MATE_API_BASE_URI: JSON.stringify(
+        process.env.NODE_ENV === 'production'
+          ? 'https://api-v2.matedevdao.workers.dev'
+          : 'http://localhost:8081'
+      ),
+    })
   ],
   mode: 'development'
 };
