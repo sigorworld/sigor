@@ -1,11 +1,11 @@
-declare const API_BASE_URI: string;
+declare const MATE_API_BASE_URI: string;
 
-const GOOGLE_ME_PATH = `${API_BASE_URI}/google-me/mateapp`;
-const GOOGLE_ME_BY_WALLET_PATH = `${API_BASE_URI}/google-me-by-wallet/mateapp`;
-const LINK_WALLET_PATH = `${API_BASE_URI}/google-link-web3-wallet/mateapp`;
-const UNLINK_WALLET_BY_TOKEN_PATH = `${API_BASE_URI}/google-unlink-web3-wallet-by-token/mateapp`;
-const UNLINK_WALLET_BY_SESSION_PATH = `${API_BASE_URI}/google-unlink-web3-wallet-by-session/mateapp`;
-const GOOGLE_VERIFY_PATH = `${API_BASE_URI}/oauth2/verify/mateapp`;
+const GOOGLE_ME_PATH = `${MATE_API_BASE_URI}/google-me/sigor`;
+const GOOGLE_ME_BY_WALLET_PATH = `${MATE_API_BASE_URI}/google-me-by-wallet/sigor`;
+const LINK_WALLET_PATH = `${MATE_API_BASE_URI}/google-link-web3-wallet/sigor`;
+const UNLINK_WALLET_BY_TOKEN_PATH = `${MATE_API_BASE_URI}/google-unlink-web3-wallet-by-token/sigor`;
+const UNLINK_WALLET_BY_SESSION_PATH = `${MATE_API_BASE_URI}/google-unlink-web3-wallet-by-session/sigor`;
+const GOOGLE_VERIFY_PATH = `${MATE_API_BASE_URI}/oauth2/verify/sigor`;
 
 export type GoogleProfile = {
   sub?: string;

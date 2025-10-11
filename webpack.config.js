@@ -1,5 +1,6 @@
 const path = require('path');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const webpack = require('webpack');
 
 module.exports = {
   entry: './app/main.ts',
@@ -46,7 +47,13 @@ module.exports = {
     ]
   },
   resolve: {
-    extensions: ['.tsx', '.ts', '.js']
+    extensions: ['.tsx', '.ts', '.js'],
+    alias: {
+      react: path.resolve(__dirname, 'node_modules/react'),
+      'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
+      '@tanstack/react-query': path.resolve(__dirname, 'node_modules/@tanstack/react-query'),
+      '@react-native-async-storage/async-storage': false,
+    },
   },
   plugins: [
     new MiniCssExtractPlugin({ filename: 'styles.css' }),
@@ -54,6 +61,7 @@ module.exports = {
       'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
       APP_NAME: JSON.stringify('Sigor'),
       WALLET_CONNECT_PROJECT_ID: JSON.stringify('7aa47ae0ec2e26682abd93948a24e755'),
+      API_BASE_URI: JSON.stringify('/api'),
       MATE_API_BASE_URI: JSON.stringify(
         process.env.NODE_ENV === 'production'
           ? 'https://api-v2.matedevdao.workers.dev'

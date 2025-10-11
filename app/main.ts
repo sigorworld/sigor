@@ -78,15 +78,18 @@ async function runAuthFlow() {
 
   if (next === 'to-login') {
     //TODO
+    console.log('to-login');
     return;
   }
   if (next === 'to-link') {
     //TODO
+    console.log('to-link');
     return;
   }
 
   // Auth OK → decide content based on path
   //TODO
+  console.log('ok');
 }
 
 (async () => {
@@ -105,4 +108,4 @@ async function runAuthFlow() {
   }
 
   runAuthFlow()
-});
+})();
