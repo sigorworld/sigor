@@ -10,6 +10,7 @@
   "cf-typegen": "wrangler types"
  },
  "dependencies": {
+  "@gaiaprotocol/client-common": "^0.0.9",
   "@ionic/core": "^8.7.6",
   "@rainbow-me/rainbowkit": "^2.2.8",
   "@tanstack/react-query": "^5.90.2",
