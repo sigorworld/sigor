@@ -1,0 +1,9 @@
+@font-face {
+  font-family: "Gulim";
+  src: url("/fonts/gulim.woff") format("woff");
+  src: url("/fonts/gulim.woff2") format("woff2");
+}
+
+body {
+  font-family: "Gulim";
+}

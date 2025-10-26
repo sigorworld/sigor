@@ -1,6 +1,7 @@
 import { tokenManager } from "@gaiaprotocol/client-common";
 import { fetchGoogleMe, GoogleMe, linkGoogleWeb3Wallet, unlinkGoogleWeb3WalletBySession } from './api/google';
 import { validateToken } from "./auth/validate";
+import './main.css'
 
 async function tryAutoLinkIfNeeded(googleMe: GoogleMe | null): Promise<'ok' | 'to-link' | 'skip'> {
   const walletHasToken = tokenManager.has();
