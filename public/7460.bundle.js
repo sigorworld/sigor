@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[7460],{77460:(s,e,r)=>{r.r(e),r.d(e,{default:()=>u.n});var u=r(88205)}}]);

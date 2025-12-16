@@ -1,0 +1,1 @@
+(self.webpackChunksigor=self.webpackChunksigor||[]).push([[7731],{87731:()=>{}}]);
