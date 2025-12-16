@@ -16,7 +16,7 @@
   \*********************/
 /***/ (() => {
 
-eval("{\n\n\n//# sourceURL=webpack://sigor/./app/main.ts?\n}");
+eval("{\n// canvas 생성\nconst canvas = document.createElement(\"canvas\");\ncanvas.width = 512;\ncanvas.height = 512;\ndocument.body.appendChild(canvas);\n// context 가져오기\nconst ctx = canvas.getContext(\"2d\");\nif (!ctx) {\n    throw new Error(\"Canvas context를 가져올 수 없습니다.\");\n}\n// 이미지 로드\nconst img = new Image();\nimg.src =\n    \"https://sigorworld.github.io/static-sigor-assets/characters/babyping/cococalf/spritesheet.png\";\nimg.onload = () => {\n    // 전체 이미지 그대로 그리기\n    ctx.drawImage(img, 0, 0);\n};\n\n\n//# sourceURL=webpack://sigor/./app/main.ts?\n}");
 
 /***/ })
 
