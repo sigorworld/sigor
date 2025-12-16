@@ -25,7 +25,6 @@
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.10.0",
-    "@gaiaprotocol/worker-common": "^0.1.15",
     "@openzeppelin/contracts": "^5.4.0",
     "@shoelace-style/shoelace": "^2.20.1",
     "@tsndr/cloudflare-worker-jwt": "^3.2.0",
@@ -33,7 +32,6 @@
     "@types/mersenne-twister": "^1.1.7",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
-    "@webtaku/h": "^0.1.1",
     "css-loader": "^7.1.2",
     "csv-parse": "^6.1.0",
     "fcm-cloudflare-workers": "^2.0.1",
