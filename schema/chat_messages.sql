@@ -1,0 +1,6 @@
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account TEXT NOT NULL,
+  text TEXT NOT NULL,
+  timestamp INTEGER NOT NULL
+);

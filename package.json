@@ -16,6 +16,7 @@
     "@tanstack/react-query": "^5.90.5",
     "@webtaku/el": "^0.1.1",
     "color": "^5.0.2",
+    "kiwiengine": "^0.5.19",
     "marked": "^16.4.1",
     "mersenne-twister": "^1.1.0",
     "navigo": "^8.11.1",
