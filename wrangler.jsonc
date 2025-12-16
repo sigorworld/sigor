@@ -3,6 +3,9 @@
 	"name": "sigor",
 	"main": "worker/index.ts",
 	"compatibility_date": "2025-07-12",
+	"placement": {
+		"mode": "smart"
+	},
 	"assets": {
 		"directory": "./public",
 		"not_found_handling": "single-page-application",
