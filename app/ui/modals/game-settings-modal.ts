@@ -68,7 +68,7 @@ export function createGameSettingsModal(): HTMLIonModalElement {
           } catch { }
           modal.dismiss();
         }
-        location.reload()
+        location.href = '/'
       },
     },
     "로그아웃"

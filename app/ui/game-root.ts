@@ -2,6 +2,7 @@ import { el } from "@webtaku/el";
 import "./game-root.css";
 
 import { createTopBar } from "./hud/top-bar";
+import { createBottomChat } from "./hud/bottom-chat";
 
 let rootEl: HTMLElement | null = null;
 
@@ -14,10 +15,10 @@ export function mountGameRoot() {
   // 월드(일단 빈 배경/캔버스 자리)
   const world = el("div.game-world") as HTMLElement;
 
-  // HUD
   const topBar = createTopBar();
+  const bottomChat = createBottomChat();
 
-  rootEl.append(world, topBar);
+  rootEl.append(world, topBar, bottomChat);
   document.body.appendChild(rootEl);
 }
 

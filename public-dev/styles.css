@@ -2636,3 +2636,196 @@ ion-modal.game-settings-modal .gs-primary-btn {
 ion-modal.game-settings-modal .gs-logout-btn {
   font-weight: 700;
 }
+/*!**********************************************************************************************************!*\
+  !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[1]!./app/ui/hud/bottom-chat.css ***!
+  \**********************************************************************************************************/
+/* bottom-chat.css */
+
+/* 루트 래퍼: 화면 하단 중앙 고정 + HUD 클릭 차단 */
+.bottom-chat {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 50;
+
+  display: flex;
+  justify-content: center;
+
+  pointer-events: none;
+  /* HUD 영역은 클릭 막고 */
+}
+
+/* 패널(채팅창)만 클릭 가능 */
+.bottom-chat-inner {
+  width: min(720px, 100%);
+  pointer-events: auto;
+
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+
+  /* ✅ 화이트 배경 */
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(10px);
+
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+
+  display: flex;
+  flex-direction: column;
+}
+
+/* 헤더 */
+.bottom-chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.bottom-chat-title {
+  font-size: 12px;
+  font-weight: 900;
+  color: rgba(10, 12, 16, 0.92);
+  letter-spacing: 0.2px;
+}
+
+.bottom-chat-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* 아이콘 버튼(접기/펼치기 등) */
+.bottom-chat-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: rgba(255, 255, 255, 0.70);
+  color: rgba(10, 12, 16, 0.90);
+
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.bottom-chat-icon:active {
+  transform: translateY(1px);
+}
+
+/* 바디 */
+.bottom-chat-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 로그 */
+.bottom-chat-log {
+  height: 160px;
+  overflow: auto;
+
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.10);
+
+  /* ✅ 로그도 화이트 톤 */
+  background: rgba(255, 255, 255, 0.70);
+
+  padding: 8px 10px;
+
+  /* iOS 스크롤 부드럽게 */
+  -webkit-overflow-scrolling: touch;
+}
+
+.bottom-chat-row {
+  margin: 6px 0;
+  line-height: 1.25;
+}
+
+.bottom-chat-who {
+  font-size: 11px;
+  font-weight: 900;
+  color: rgba(10, 12, 16, 0.70);
+}
+
+.bottom-chat-text {
+  font-size: 13px;
+  color: rgba(10, 12, 16, 0.88);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 입력 영역 */
+.bottom-chat-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.bottom-chat-input {
+  flex: 1;
+
+  min-height: 42px;
+  max-height: 96px;
+  resize: none;
+
+  padding: 10px 12px;
+  border-radius: 12px;
+
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.90);
+  color: rgba(10, 12, 16, 0.92);
+  outline: none;
+
+  font-size: 14px;
+}
+
+.bottom-chat-input::placeholder {
+  color: rgba(10, 12, 16, 0.45);
+}
+
+/* 전송 버튼 */
+.bottom-chat-send {
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(10, 12, 16, 0.06);
+  color: rgba(10, 12, 16, 0.90);
+
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.bottom-chat-send:active {
+  transform: translateY(1px);
+}
+
+/* 안내 문구 */
+.bottom-chat-note {
+  font-size: 11px;
+  color: rgba(10, 12, 16, 0.55);
+  margin-top: -2px;
+}
+
+/* 접힌 상태 */
+.bottom-chat[data-collapsed="1"] .bottom-chat-body {
+  display: none;
+}
+
+/* 모바일에서 조금 더 작게 */
+@media (max-width: 480px) {
+  .bottom-chat-log {
+    height: 130px;
+  }
+
+  .bottom-chat-inner {
+    border-radius: 14px;
+  }
+}

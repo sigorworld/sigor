@@ -216,7 +216,7 @@ function createProfileSetupOverlay(opts: {
   logoutBtn.onclick = async () => {
     await logout().catch(() => { });
     await googleLogout().catch(() => { }); // 이미 해제된 경우 무시
-    location.reload();
+    location.href = '/'
   };
 
   function syncSaveEnabled() {

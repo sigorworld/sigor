@@ -15,5 +15,28 @@
 	},
 	"observability": {
 		"enabled": true
-	}
+	},
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "WORLD_ROOM",
+				"class_name": "WorldRoomDO"
+			}
+		]
+	},
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_sqlite_classes": [
+				"WorldRoomDO"
+			]
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "sigor",
+			"database_id": "64c6380f-4d53-4faa-a796-48dc5a7edfb6"
+		}
+	]
 }
