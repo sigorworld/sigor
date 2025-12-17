@@ -1,0 +1,21 @@
+.game-root {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+
+  /* 앱 기본 배경 */
+  background: #0b1020;
+}
+
+/* 실제 게임 렌더링(캔버스/월드) 영역 자리 */
+.game-world {
+  position: absolute;
+  inset: 0;
+
+  /* 임시로 그라데이션 */
+  background: radial-gradient(1200px 800px at 50% 20%, rgba(255, 255, 255, 0.08), transparent 60%),
+    radial-gradient(900px 700px at 80% 80%, rgba(120, 180, 255, 0.10), transparent 55%),
+    #0b1020;
+}

@@ -5,6 +5,7 @@ import { sessionManager } from './auth/session-manager';
 import { createRainbowKit } from './components/wallet';
 import './main.css';
 import { initAuthOverlays } from "./ui/auth-overlays";
+import { mountGameRoot } from './ui/game-root';
 import { initProfileSetupOverlay } from './ui/profile-setup-overlay';
 
 // =====================
@@ -50,3 +51,4 @@ document.documentElement.classList.remove('app-loading');
 initAuthOverlays();
 initProfileSetupOverlay();
 
+mountGameRoot();

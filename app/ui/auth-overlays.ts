@@ -22,7 +22,9 @@ let currentOverlay: HTMLElement | null = null;
 let unwatchAccount: (() => void) | null = null;
 
 function removeOverlay() {
-  try { unwatchAccount?.(); } catch { }
+  try {
+    unwatchAccount?.();
+  } catch { }
   unwatchAccount = null;
 
   currentOverlay?.remove();
@@ -34,10 +36,7 @@ function mountOverlay(type: OverlayType) {
 
   removeOverlay();
 
-  const overlay =
-    type === "login"
-      ? createLoginOverlay()
-      : createWalletLinkOverlay();
+  const overlay = type === "login" ? createLoginOverlay() : createWalletLinkOverlay();
 
   overlay.setAttribute("data-overlay", type);
   document.body.appendChild(overlay);
@@ -98,23 +97,11 @@ function createLoginOverlay(): HTMLElement {
     "지갑을 연결하고 메시지에 서명해 접속하거나,\n이미 연동된 계정은 Google로 바로 로그인할 수 있음"
   );
 
-  const connectBtn = el(
-    "button.auth-btn.primary",
-    { type: "button" },
-    "1. 지갑 연결"
-  ) as HTMLButtonElement;
+  const connectBtn = el("button.auth-btn.primary", { type: "button" }, "1. 지갑 연결") as HTMLButtonElement;
 
-  const signBtn = el(
-    "button.auth-btn",
-    { type: "button", disabled: true },
-    "2. 메시지 서명"
-  ) as HTMLButtonElement;
+  const signBtn = el("button.auth-btn", { type: "button", disabled: true }, "2. 메시지 서명") as HTMLButtonElement;
 
-  const googleBtn = el(
-    "button.auth-btn.google",
-    { type: "button" },
-    "Google로 계속하기"
-  ) as HTMLButtonElement;
+  const googleBtn = el("button.auth-btn.google", { type: "button" }, "Google로 계속하기") as HTMLButtonElement;
 
   const hint = el("div.auth-overlay-hint", "※ 계정은 Mate App의 그것과 동일");
 
@@ -188,23 +175,11 @@ function createWalletLinkOverlay(): HTMLElement {
     "Google 로그인은 완료되었습니다.\n지갑을 연결하고 메시지 서명을 완료하면 계정이 연동됩니다."
   );
 
-  const connectBtn = el(
-    "button.auth-btn.primary",
-    { type: "button" },
-    "1. 지갑 연결"
-  ) as HTMLButtonElement;
+  const connectBtn = el("button.auth-btn.primary", { type: "button" }, "1. 지갑 연결") as HTMLButtonElement;
 
-  const linkBtn = el(
-    "button.auth-btn",
-    { type: "button", disabled: true },
-    "2. 지갑 연동"
-  ) as HTMLButtonElement;
+  const linkBtn = el("button.auth-btn", { type: "button", disabled: true }, "2. 지갑 연동") as HTMLButtonElement;
 
-  const logoutBtn = el(
-    "button.auth-btn",
-    { type: "button" },
-    "Google 로그아웃"
-  ) as HTMLButtonElement;
+  const logoutBtn = el("button.auth-btn", { type: "button" }, "Google 로그아웃") as HTMLButtonElement;
 
   const hint = el("div.auth-overlay-hint", "※ 지갑 연동 후에는 월드 기능을 모두 사용할 수 있어요.");
 
@@ -261,9 +236,15 @@ function createWalletLinkOverlay(): HTMLElement {
     } catch (err) {
       console.error(err);
     } finally {
-      try { tokenManager.clear(); } catch { }
-      try { sessionManager.clear(); } catch { }
-      try { await disconnect(wagmiConfig); } catch { }
+      try {
+        tokenManager.clear();
+      } catch { }
+      try {
+        sessionManager.clear();
+      } catch { }
+      try {
+        await disconnect(wagmiConfig);
+      } catch { }
       logoutBtn.removeAttribute("data-loading");
       await refreshAuthOverlays();
     }
@@ -295,7 +276,9 @@ export async function refreshAuthOverlays() {
 
       return;
     }
-    try { tokenManager.clear(); } catch { }
+    try {
+      tokenManager.clear();
+    } catch { }
   }
 
   // 2) google session(sid) 기반 me 체크
@@ -321,7 +304,6 @@ export async function refreshAuthOverlays() {
  * - googleSignInComplete / SignOutComplete 등 이벤트 후에도 오버레이 갱신
  */
 export function initAuthOverlays() {
-  // 기존 webview 이벤트를 쓰는 구조라면 여기에 붙여서 “갱신”만 해주면 됨
   window.addEventListener("googleSignInComplete", () => {
     void refreshAuthOverlays();
   });

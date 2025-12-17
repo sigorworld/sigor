@@ -18,6 +18,11 @@
   box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.15) inset;
 }
 
+.profile-nft[data-disabled="1"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .profile-nft img {
   width: 100%;
   height: 120px;
@@ -58,4 +63,43 @@
 .profile-field textarea {
   min-height: 84px;
   resize: vertical;
+}
+
+/* NFT 없음 안내 */
+.profile-empty {
+  grid-column: 1 / -1;
+  border: 1px dashed #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fff;
+}
+
+.profile-empty .title {
+  font-size: 12px;
+  font-weight: 900;
+  color: #111;
+  margin-bottom: 6px;
+}
+
+.profile-empty .desc {
+  font-size: 12px;
+  font-weight: 800;
+  color: #6b7280;
+  line-height: 1.45;
+  white-space: pre-line;
+}
+
+.profile-empty .actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+
+  >a,
+  >button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
 }

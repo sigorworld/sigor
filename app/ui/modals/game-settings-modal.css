@@ -1,0 +1,132 @@
+/* =========================
+   Modal base
+   ========================= */
+
+ion-modal.game-settings-modal {
+  --border-radius: 16px;
+  --backdrop-opacity: 0.4;
+}
+
+/* 모달 카드 */
+ion-modal.game-settings-modal::part(content) {
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+/* =========================
+   Header
+   ========================= */
+
+ion-modal.game-settings-modal ion-toolbar {
+  --background: #ffffff;
+  --color: #111827;
+  --padding-start: 16px;
+  --padding-end: 10px;
+  --min-height: 56px;
+
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+ion-modal.game-settings-modal ion-title {
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* =========================
+   Content
+   ========================= */
+
+ion-modal.game-settings-modal ion-content {
+  --background: #f9fafb;
+  --padding-start: 0;
+  --padding-end: 0;
+  --padding-top: 0;
+  --padding-bottom: 0;
+}
+
+ion-modal.game-settings-modal .gs-body {
+  padding: 16px;
+}
+
+/* =========================
+   User card
+   ========================= */
+
+ion-modal.game-settings-modal .gs-card {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.gs-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Avatar */
+.gs-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  overflow: hidden;
+
+  background: #e5e7eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  color: #111827;
+  font-weight: 800;
+}
+
+.gs-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* User meta */
+.gs-user-meta {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.gs-name {
+  color: #111827;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.gs-addr {
+  color: #6b7280;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+}
+
+/* =========================
+   Actions
+   ========================= */
+
+.gs-actions {
+  display: grid;
+  gap: 10px;
+}
+
+/* Primary button (프로필 설정) */
+ion-modal.game-settings-modal .gs-primary-btn {
+  font-weight: 700;
+}
+
+/* Logout button */
+ion-modal.game-settings-modal .gs-logout-btn {
+  font-weight: 700;
+}
