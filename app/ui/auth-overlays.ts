@@ -171,8 +171,8 @@ function createLoginOverlay(): HTMLElement {
 
 function createWalletLinkOverlay(): HTMLElement {
   const { backdrop, body } = createOverlayShell(
-    "지갑 연동이 필요합니다",
-    "Google 로그인은 완료되었습니다.\n지갑을 연결하고 메시지 서명을 완료하면 계정이 연동됩니다."
+    "지갑 연동 필요",
+    "Google 로그인은 완료되었음\n지갑을 연결하고 메시지 서명을 완료하면 계정이 연동됨"
   );
 
   const connectBtn = el("button.auth-btn.primary", { type: "button" }, "1. 지갑 연결") as HTMLButtonElement;
@@ -180,8 +180,6 @@ function createWalletLinkOverlay(): HTMLElement {
   const linkBtn = el("button.auth-btn", { type: "button", disabled: true }, "2. 지갑 연동") as HTMLButtonElement;
 
   const logoutBtn = el("button.auth-btn", { type: "button" }, "Google 로그아웃") as HTMLButtonElement;
-
-  const hint = el("div.auth-overlay-hint", "※ 지갑 연동 후에는 월드 기능을 모두 사용할 수 있어요.");
 
   function syncWalletButtons() {
     const account = getAccount(wagmiConfig);
@@ -250,7 +248,7 @@ function createWalletLinkOverlay(): HTMLElement {
     }
   };
 
-  body.append(connectBtn, linkBtn, el("div.auth-overlay-divider"), logoutBtn, hint);
+  body.append(connectBtn, linkBtn, el("div.auth-overlay-divider"), logoutBtn);
 
   syncWalletButtons();
   unwatchAccount = watchAccount(wagmiConfig, { onChange: syncWalletButtons });
@@ -265,24 +263,30 @@ function createWalletLinkOverlay(): HTMLElement {
  * - 토큰 유효: hide
  */
 export async function refreshAuthOverlays() {
-  // 1) 지갑 토큰이 있으면 유효성 체크
+  // 0) 먼저 google session 기반 me 조회 (토큰 자동 복구 가능)
+  const me = await oauth2Me().catch(() => null);
+
+  // ✅ 이미 연동된 계정이면 me에 token/wallet_address가 올 수 있으니 즉시 주입
+  if (me?.ok && me.token && me.wallet_address) {
+    try {
+      tokenManager.set(me.token, me.wallet_address);
+    } catch { /* noop */ }
+  }
+
+  // 1) 토큰이 있으면 유효성 체크
   if (tokenManager.has()) {
     const ok = await validateToken().catch(() => false);
     if (ok) {
       removeOverlay();
-
-      // ✅ 로그인 OK 이후, 프로필/primary_nft 세팅 체크
       await refreshProfileSetupOverlay();
-
       return;
     }
-    try {
-      tokenManager.clear();
-    } catch { }
+
+    // 토큰이 있는데 invalid면 정리
+    try { tokenManager.clear(); } catch { }
   }
 
-  // 2) google session(sid) 기반 me 체크
-  const me = await oauth2Me().catch(() => null);
+  // 2) google session 존재 여부
   const hasGoogleSession = !!me?.ok || sessionManager.has();
 
   // 3) 상태별 오버레이 선택
