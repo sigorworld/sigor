@@ -1,21 +1,49 @@
-// canvas 생성
-const canvas = document.createElement("canvas");
-canvas.width = 512;
-canvas.height = 512;
-document.body.appendChild(canvas);
+import {
+  createRainbowKit
+} from '@gaiaprotocol/client-common';
+import { BackButtonEvent, setupConfig } from '@ionic/core';
+import { defineCustomElements } from '@ionic/core/loader';
+import '@shoelace-style/shoelace';
+import { sessionManager } from './auth/session-manager';
+import { initAuthOverlays } from "./ui/auth-overlays";
 
-// context 가져오기
-const ctx = canvas.getContext("2d");
-if (!ctx) {
-  throw new Error("Canvas context를 가져올 수 없습니다.");
+// =====================
+//  Environment / Session / WebView
+// =====================
+
+const urlParams = new URLSearchParams(window.location.search);
+
+// Handle ?session=... from backend
+const sid = urlParams.get('session');
+if (sid) {
+  sessionManager.set(sid);
 }
 
-// 이미지 로드
-const img = new Image();
-img.src =
-  "https://sigorworld.github.io/static-sigor-assets/characters/babyping/cococalf/spritesheet.png";
+export const isWebView = urlParams.get('source') === 'webview';
 
-img.onload = () => {
-  // 전체 이미지 그대로 그리기
-  ctx.drawImage(img, 0, 0);
+// =====================
+//    Ionic setup
+// =====================
+
+setupConfig({ hardwareBackButton: true, experimentalCloseWatcher: true });
+
+const backHandler = (event: BackButtonEvent) => {
+  event.detail.register(0, () => {
+    const hasHistory = window.history.length > 1;
+    const isFromExternal =
+      document.referrer &&
+      !document.referrer.startsWith(window.location.origin);
+    if (!hasHistory || isFromExternal) {
+      document.removeEventListener('ionBackButton' as any, backHandler);
+    }
+    window.history.back();
+  });
 };
+document.addEventListener('ionBackButton' as any, backHandler);
+
+defineCustomElements(window);
+document.body.appendChild(createRainbowKit());
+
+document.documentElement.classList.remove('app-loading');
+
+initAuthOverlays();
