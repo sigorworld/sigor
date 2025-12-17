@@ -3,8 +3,8 @@ import { defineCustomElements } from '@ionic/core/loader';
 import '@shoelace-style/shoelace';
 import { sessionManager } from './auth/session-manager';
 import { createRainbowKit } from './components/wallet';
+import './main.css';
 import { initAuthOverlays } from "./ui/auth-overlays";
-import { logout } from '@gaiaprotocol/client-common';
 
 // =====================
 //  Environment / Session / WebView

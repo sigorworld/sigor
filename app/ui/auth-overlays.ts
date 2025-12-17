@@ -93,8 +93,8 @@ function createOverlayShell(title: string, desc: string) {
 
 function createLoginOverlay(): HTMLElement {
   const { backdrop, body } = createOverlayShell(
-    "로그인이 필요합니다",
-    "지갑을 연결하고 메시지에 서명해 접속하거나,\n이미 연동된 계정은 Google로 바로 로그인할 수 있어요."
+    "시고르에 접속",
+    "지갑을 연결하고 메시지에 서명해 접속하거나,\n이미 연동된 계정은 Google로 바로 로그인할 수 있음"
   );
 
   const connectBtn = el(
@@ -115,7 +115,7 @@ function createLoginOverlay(): HTMLElement {
     "Google로 계속하기"
   ) as HTMLButtonElement;
 
-  const hint = el("div.auth-overlay-hint", "※ 월드는 계속 실행 중이며, 로그인만 완료하면 바로 입장할 수 있어요.");
+  const hint = el("div.auth-overlay-hint", "※ 계정은 Mate App의 그것과 동일");
 
   function syncWalletButtons() {
     const account = getAccount(wagmiConfig);
