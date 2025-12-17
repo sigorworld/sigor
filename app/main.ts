@@ -1,11 +1,10 @@
-import {
-  createRainbowKit
-} from '@gaiaprotocol/client-common';
 import { BackButtonEvent, setupConfig } from '@ionic/core';
 import { defineCustomElements } from '@ionic/core/loader';
 import '@shoelace-style/shoelace';
 import { sessionManager } from './auth/session-manager';
+import { createRainbowKit } from './components/wallet';
 import { initAuthOverlays } from "./ui/auth-overlays";
+import { logout } from '@gaiaprotocol/client-common';
 
 // =====================
 //  Environment / Session / WebView
@@ -42,6 +41,7 @@ const backHandler = (event: BackButtonEvent) => {
 document.addEventListener('ionBackButton' as any, backHandler);
 
 defineCustomElements(window);
+document.documentElement.setAttribute('mode', 'ios');
 document.body.appendChild(createRainbowKit());
 
 document.documentElement.classList.remove('app-loading');

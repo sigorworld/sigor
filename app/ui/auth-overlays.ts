@@ -1,4 +1,4 @@
-import { openWalletConnectModal, tokenManager, wagmiConfig as wagmiConfigCommon } from "@gaiaprotocol/client-common";
+import { tokenManager } from "@gaiaprotocol/client-common";
 import { disconnect, getAccount, watchAccount } from "@wagmi/core";
 import { el } from "@webtaku/el";
 
@@ -12,9 +12,8 @@ import { oauth2Me, oauthLinkWallet } from "../auth/oauth2";
 import { sessionManager } from "../auth/session-manager";
 import { validateToken } from "../auth/validate";
 
+import { openWalletConnectModal, wagmiConfig } from "../components/wallet";
 import "./auth-overlays.css";
-
-const wagmiConfig: any = wagmiConfigCommon
 
 type OverlayType = "login" | "wallet-link";
 

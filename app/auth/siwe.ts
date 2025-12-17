@@ -1,6 +1,6 @@
-import { wagmiConfig } from '@gaiaprotocol/client-common';
 import { signMessage as wagmiSignMessage } from '@wagmi/core';
 import { createSiweMessage as viemCreateSiweMessage } from 'viem/siwe';
+import { wagmiConfig } from '../components/wallet';
 import { MESSAGE_FOR_WALLET_LOGIN } from '../vars';
 
 declare const MATE_API_BASE_URI: string;
@@ -37,7 +37,7 @@ async function signMessage(address: `0x${string}`): Promise<`0x${string}`> {
 
   const siweMessage = createSiweMessage(address, nonce, issuedAt);
 
-  return await wagmiSignMessage(wagmiConfig as any, {
+  return await wagmiSignMessage(wagmiConfig, {
     message: siweMessage,
     account: address,
   });
