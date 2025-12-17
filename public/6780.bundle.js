@@ -1,4 +1,4 @@
-"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[6780],{16780:(l,a,e)=>{e.r(a),e.d(a,{swapHorizontalSvg:()=>o});const o=e(12618).JW`<svg fill="none" viewBox="0 0 20 20">
+"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[6780],{16780:(l,a,e)=>{e.r(a),e.d(a,{swapHorizontalSvg:()=>o});const o=e(86161).JW`<svg fill="none" viewBox="0 0 20 20">
   <path
     fill="currentColor"
     fill-rule="evenodd"

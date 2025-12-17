@@ -1,4 +1,4 @@
-"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[4736],{54736:(l,h,i)=>{i.r(h),i.d(h,{twitchSvg:()=>f});const f=i(12618).JW`<svg fill="none" viewBox="0 0 40 40">
+"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[4736],{54736:(l,h,i)=>{i.r(h),i.d(h,{twitchSvg:()=>f});const f=i(86161).JW`<svg fill="none" viewBox="0 0 40 40">
   <g clip-path="url(#a)">
     <g clip-path="url(#b)">
       <circle cx="20" cy="19.89" r="20" fill="#5A3E85" />

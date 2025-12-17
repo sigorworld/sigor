@@ -1,4 +1,4 @@
-"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[9624],{59624:(l,a,s)=>{s.r(a),s.d(a,{googleSvg:()=>h});const h=s(12618).JW`<svg fill="none" viewBox="0 0 40 40">
+"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[9624],{59624:(l,a,s)=>{s.r(a),s.d(a,{googleSvg:()=>h});const h=s(86161).JW`<svg fill="none" viewBox="0 0 40 40">
   <path
     fill="#4285F4"
     d="M32.74 20.3c0-.93-.08-1.81-.24-2.66H20.26v5.03h7a6 6 0 0 1-2.62 3.91v3.28h4.22c2.46-2.27 3.88-5.6 3.88-9.56Z"

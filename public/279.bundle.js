@@ -1,4 +1,4 @@
-"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[279],{30279:(h,l,f)=>{f.r(l),f.d(l,{facebookSvg:()=>c});const c=f(12618).JW`<svg fill="none" viewBox="0 0 40 40">
+"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[279],{30279:(h,l,f)=>{f.r(l),f.d(l,{facebookSvg:()=>c});const c=f(86161).JW`<svg fill="none" viewBox="0 0 40 40">
   <g clip-path="url(#a)">
     <g clip-path="url(#b)">
       <circle cx="20" cy="19.89" r="20" fill="#1877F2" />

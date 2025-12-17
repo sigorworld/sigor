@@ -1,4 +1,4 @@
-"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[4748],{84748:(e,l,r)=>{r.r(l),r.d(l,{infoCircleSvg:()=>o});const o=r(12618).JW`<svg fill="none" viewBox="0 0 14 15">
+"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[4748],{84748:(e,l,r)=>{r.r(l),r.d(l,{infoCircleSvg:()=>o});const o=r(86161).JW`<svg fill="none" viewBox="0 0 14 15">
   <path
     fill="currentColor"
     d="M6 10.49a1 1 0 1 0 2 0v-2a1 1 0 0 0-2 0v2ZM7 4.49a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"

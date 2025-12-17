@@ -1,4 +1,4 @@
-"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[6717],{16717:(C,e,l)=>{l.r(e),l.d(e,{arrowBottomCircleSvg:()=>o});const o=l(12618).JW`<svg
+"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[6717],{16717:(C,e,l)=>{l.r(e),l.d(e,{arrowBottomCircleSvg:()=>o});const o=l(86161).JW`<svg
   fill="none"
   viewBox="0 0 21 20"
 >

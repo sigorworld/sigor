@@ -1,4 +1,4 @@
-"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[261],{80261:(e,l,s)=>{s.r(l),s.d(l,{bankSvg:()=>i});const i=s(12618).JW`<svg
+"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[261],{80261:(e,l,s)=>{s.r(l),s.d(l,{bankSvg:()=>i});const i=s(86161).JW`<svg
   xmlns="http://www.w3.org/2000/svg"
   width="12"
   height="13"

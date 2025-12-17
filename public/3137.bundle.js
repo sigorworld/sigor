@@ -1,4 +1,4 @@
-"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[3137],{95518:(s,r,l)=>{l.r(r),l.d(r,{cursorTransparentSvg:()=>e});const e=l(12618).JW`<svg fill="none" viewBox="0 0 14 6">
+"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[3137],{95518:(s,r,l)=>{l.r(r),l.d(r,{cursorTransparentSvg:()=>e});const e=l(86161).JW`<svg fill="none" viewBox="0 0 14 6">
   <path style="fill: var(--wui-color-bg-150);" d="M0 1h14L9.21 5.12a3.31 3.31 0 0 1-4.49 0L0 1Z" />
   <path
     style="stroke: var(--wui-color-inverse-100);"

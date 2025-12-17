@@ -1,4 +1,4 @@
-"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[6355],{76355:(c,e,a)=>{a.r(e),a.d(e,{desktopSvg:()=>l});const l=a(12618).JW`<svg fill="none" viewBox="0 0 20 20">
+"use strict";(self.webpackChunksigor=self.webpackChunksigor||[]).push([[6355],{76355:(c,e,a)=>{a.r(e),a.d(e,{desktopSvg:()=>l});const l=a(86161).JW`<svg fill="none" viewBox="0 0 20 20">
   <path
     fill="currentColor"
     fill-rule="evenodd"
