@@ -1,3 +1,6 @@
+@import "@rainbow-me/rainbowkit/styles.css";
+@import "@ionic/core/css/ionic.bundle.css";
+
 @font-face {
   font-family: "Gulim";
   src: url("/fonts/gulim.woff") format("woff");

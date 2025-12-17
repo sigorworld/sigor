@@ -1,7 +1,7 @@
 .auth-overlay-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 99999;
+  z-index: 949;
 
   display: flex;
   align-items: center;
@@ -10,6 +10,9 @@
 
 .auth-overlay-card {
   width: min(360px, calc(100vw - 32px));
+  max-height: 90%;
+  overflow-y: auto;
+
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.92);
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);

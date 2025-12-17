@@ -14,6 +14,7 @@ import { validateToken } from "../auth/validate";
 
 import { openWalletConnectModal, wagmiConfig } from "../components/wallet";
 import "./auth-overlays.css";
+import { refreshProfileSetupOverlay } from "./profile-setup-overlay";
 
 type OverlayType = "login" | "wallet-link";
 
@@ -288,9 +289,12 @@ export async function refreshAuthOverlays() {
     const ok = await validateToken().catch(() => false);
     if (ok) {
       removeOverlay();
+
+      // ✅ 로그인 OK 이후, 프로필/primary_nft 세팅 체크
+      await refreshProfileSetupOverlay();
+
       return;
     }
-    // 만료면 정리 후 계속 진행
     try { tokenManager.clear(); } catch { }
   }
 

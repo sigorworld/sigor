@@ -1,0 +1,61 @@
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.profile-nft {
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+}
+
+.profile-nft[data-selected="1"] {
+  border-color: #111827;
+  box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.15) inset;
+}
+
+.profile-nft img {
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  display: block;
+  background: #111;
+}
+
+.profile-nft .meta {
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  color: #111;
+}
+
+.profile-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-field label {
+  font-size: 12px;
+  font-weight: 800;
+  color: #111;
+}
+
+.profile-field input,
+.profile-field textarea {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 10px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+}
+
+.profile-field textarea {
+  min-height: 84px;
+  resize: vertical;
+}
