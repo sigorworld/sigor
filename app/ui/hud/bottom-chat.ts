@@ -1,9 +1,8 @@
-import { tokenManager } from "@gaiaprotocol/client-common";
 import { el } from "@webtaku/el";
 import "./bottom-chat.css";
 
 import { showErrorAlert } from "../../components/alert";
-import { WorldService } from "../../services/world-service";
+import type { WorldService } from "../../services/world-service";
 
 // 채팅 로그 최대 표시 개수(클라 UI용)
 const MAX_UI_MESSAGES = 120;
@@ -20,9 +19,13 @@ function isNearBottom(container: HTMLElement, thresholdPx = 40) {
   );
 }
 
-export function createBottomChat(opts?: { world?: WorldService }): HTMLElement {
-  const world = opts?.world ?? new WorldService();
+export type BottomChatUI = {
+  el: HTMLElement;
+  setVisible: (visible: boolean) => void;
+  remove: () => void;
+};
 
+export function createBottomChat(service: WorldService): BottomChatUI {
   const wrap = el("div.bottom-chat") as HTMLElement;
   const inner = el("div.bottom-chat-inner") as HTMLElement;
 
@@ -31,7 +34,6 @@ export function createBottomChat(opts?: { world?: WorldService }): HTMLElement {
   const actions = el("div.bottom-chat-actions");
 
   let collapsed = false;
-
   const collapseBtn = el(
     "button.bottom-chat-icon",
     {
@@ -46,7 +48,6 @@ export function createBottomChat(opts?: { world?: WorldService }): HTMLElement {
   ) as HTMLButtonElement;
 
   actions.append(collapseBtn);
-
   const header = el("div.bottom-chat-header", title, actions);
 
   // body
@@ -57,11 +58,7 @@ export function createBottomChat(opts?: { world?: WorldService }): HTMLElement {
     rows: 1,
   }) as HTMLTextAreaElement;
 
-  const sendBtn = el(
-    "button.bottom-chat-send",
-    { type: "button" },
-    "전송"
-  ) as HTMLButtonElement;
+  const sendBtn = el("button.bottom-chat-send", { type: "button" }, "전송") as HTMLButtonElement;
 
   const note = el(
     "div.bottom-chat-note",
@@ -88,7 +85,6 @@ export function createBottomChat(opts?: { world?: WorldService }): HTMLElement {
 
     log.append(row);
 
-    // UI 메시지 수 제한
     while (log.childElementCount > MAX_UI_MESSAGES) {
       log.firstElementChild?.remove();
     }
@@ -104,11 +100,6 @@ export function createBottomChat(opts?: { world?: WorldService }): HTMLElement {
     log.innerHTML = "";
   }
 
-  function syncVisibility() {
-    const visible = tokenManager.has();
-    wrap.style.display = visible ? "flex" : "none";
-  }
-
   // -----------------------------
   // send handlers
   // -----------------------------
@@ -117,7 +108,7 @@ export function createBottomChat(opts?: { world?: WorldService }): HTMLElement {
     if (!text) return;
 
     try {
-      world.sendChat(text);
+      service.sendChat(text);
       input.value = "";
       input.focus();
     } catch (err: any) {
@@ -136,68 +127,68 @@ export function createBottomChat(opts?: { world?: WorldService }): HTMLElement {
   });
 
   // -----------------------------
-  // world events
+  // world events (UI only)
   // -----------------------------
-  world.addEventListener("init", (e: any) => {
-    // recentMessages
-    clearLog();
-    const msgs = e.detail?.recentMessages ?? e.detail?.recent_messages ?? null;
+  const ac = new AbortController();
+  const sig = ac.signal;
 
-    // WorldService 구현에 따라 detail 모양이 다를 수 있어서 방어적으로 처리
-    const recent =
-      Array.isArray(msgs) ? msgs : (e.detail?.recentMessages as any[]) ?? [];
+  service.addEventListener(
+    "init",
+    (e: any) => {
+      clearLog();
+      const msgs = e.detail?.recentMessages ?? e.detail?.recent_messages ?? null;
+      const recent = Array.isArray(msgs) ? msgs : (e.detail?.recentMessages as any[]) ?? [];
+      for (const m of recent) {
+        appendMessage({
+          account: m.account ?? m.sender ?? "-",
+          text: m.text ?? m.content ?? "",
+        });
+      }
+    },
+    { signal: sig } as any
+  );
 
-    for (const m of recent) {
-      appendMessage({ account: m.account ?? m.sender ?? "-", text: m.text ?? m.content ?? "" });
-    }
-  });
+  service.addEventListener(
+    "chat",
+    (e: any) => {
+      const m = e.detail;
+      if (!m) return;
+      appendMessage({
+        account: m.account ?? m.sender ?? "-",
+        text: m.text ?? m.content ?? "",
+      });
+    },
+    { signal: sig } as any
+  );
 
-  world.addEventListener("chat", (e: any) => {
-    const m = e.detail;
-    if (!m) return;
-    appendMessage({ account: m.account ?? m.sender ?? "-", text: m.text ?? m.content ?? "" });
-  });
+  service.addEventListener(
+    "disconnect",
+    () => {
+      // 연결이 끊기면 UI는 비워둘지/유지할지 취향인데, 보통 비우는 게 깔끔
+      // 원치 않으면 이 줄 삭제하세요.
+      clearLog();
+    },
+    { signal: sig } as any
+  );
 
-  world.addEventListener("error", (e: any) => {
-    const err = e.detail instanceof Error ? e.detail : null;
-    if (err) console.error("[world] error", err);
-  });
+  service.addEventListener(
+    "error",
+    (e: any) => {
+      const err = e.detail instanceof Error ? e.detail : null;
+      if (err) console.error("[world] error", err);
+    },
+    { signal: sig } as any
+  );
 
-  // -----------------------------
-  // auth events -> connect/disconnect
-  // -----------------------------
-  async function connectIfPossible() {
-    if (!tokenManager.has()) return;
-    try {
-      world.connect();
-    } catch (err) {
-      console.error("[bottom-chat] world.connect failed", err);
-    }
-  }
+  // public api
+  const setVisible = (visible: boolean) => {
+    wrap.style.display = visible ? "flex" : "none";
+  };
 
-  function disconnectWorld() {
-    try {
-      world.disconnect();
-    } catch { }
-  }
+  const remove = () => {
+    ac.abort();
+    wrap.remove();
+  };
 
-  // 초기 반영
-  syncVisibility();
-  void connectIfPossible();
-
-  tokenManager.on("signedIn", () => {
-    syncVisibility();
-    void connectIfPossible();
-  });
-
-  tokenManager.on("signedOut", () => {
-    syncVisibility();
-    clearLog();
-    disconnectWorld();
-  });
-
-  // (선택) 채팅창 포커스 시, 게임 쪽 이동키 처리 막고 싶으면
-  // 프로젝트 입력 시스템이 있으면 여기서 toggle 하시면 됩니다.
-
-  return wrap;
+  return { el: wrap, setVisible, remove };
 }
