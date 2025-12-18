@@ -26,8 +26,8 @@ function primaryKey(p: Profile | null): string | null {
 function toAppearance(nft: NftRow | null): Appearance | null {
   if (!nft) return null;
   return {
-    nftAddress: nft.nft_address,
-    tokenId: nft.token_id,
+    nftAddress: nft.contract_addr,
+    tokenId: nft.id,
     parts: nft.parts,
     image: nft.image
   };

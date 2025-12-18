@@ -31,6 +31,9 @@ export abstract class Character extends GameObject {
   private bubbleEl: HTMLDivElement;
   private bubbleHideTimer: number | null = null;
 
+  // ✅ “현재 비주얼 리소스가 무엇인지”를 나타내는 키 (같으면 rebuild 금지)
+  private visualKey = "fallback";
+
   constructor() {
     super({ layer: "world", useYSort: true } as any);
 
@@ -51,7 +54,7 @@ export abstract class Character extends GameObject {
     const bubbleNode = new DomContainerNode(this.bubbleEl, { x: 0, y: -64, layer: "hud" } as any);
     this.add(bubbleNode);
 
-    // ✅ 처음엔 데이터가 없을 수 있으니 fallback만 만들어둠
+    // ✅ 초기 fallback
     this.#buildFallback();
   }
 
@@ -81,17 +84,21 @@ export abstract class Character extends GameObject {
   }
 
   /**
-   * ✅ 외부에서 CharacterData를 주입하면 그걸로 스프라이트 구성/교체
+   * ✅ 외형(리소스) 바뀔 때만 rebuild
+   * - 같은 리소스면 절대 rebuild 안 함
    */
   setCharacterData(next: CharacterData | null | undefined) {
-    if (!next) {
-      // null/undefined면 fallback로
-      this.data = null;
-      this.#rebuildVisual();
+    const nextData = next ?? null;
+    const nextKey = this.#calcVisualKey(nextData);
+
+    // ✅ 같은 비주얼이면 rebuild 금지
+    if (nextKey === this.visualKey) {
+      this.data = nextData;
       return;
     }
 
-    this.data = next;
+    this.visualKey = nextKey;
+    this.data = nextData;
     this.#rebuildVisual();
   }
 
@@ -130,25 +137,19 @@ export abstract class Character extends GameObject {
   // ---------------------------
 
   #rebuildVisual() {
-    // ✅ 기존 스프라이트 제거/정리
     this.#clearSpriteRoot();
 
-    // ✅ 데이터 있으면 데이터 기반으로 빌드, 없으면 fallback
     if (this.data) this.#buildFromData(this.data);
     else this.#buildFallback();
 
-    // ✅ 현재 방향 기준으로 애니메이션 재적용(데이터 교체 직후)
+    // 데이터 교체 직후 애니메이션 재적용
     this.lastAnim = "";
     this.#applyAnimation({ dir: this.lastDir ?? "down", moving: false });
   }
 
   #clearSpriteRoot() {
-    // kiwiengine의 remove/child 정리 API가 프로젝트마다 다를 수 있어서
-    // 안전하게 "spriteRoot를 통째로 갈아끼우는 방식"도 고려할 수 있지만,
-    // 여기서는 일반적인 패턴(자식 제거)로 작성했습니다.
     try {
-      // @ts-ignore - 엔진에 따라 children 접근 방식이 다를 수 있음
-      const children: any[] = this.spriteRoot.children ?? [];
+      const children: any[] = (this.spriteRoot as any).children ?? [];
       for (const c of children) {
         if (typeof c.remove === "function") c.remove();
       }
@@ -156,7 +157,6 @@ export abstract class Character extends GameObject {
       // ignore
     }
 
-    // spriteRoot 내부가 비워졌다고 가정
     this.sprite = null;
     this.spriteRoot.scaleX = 1;
   }
@@ -181,22 +181,19 @@ export abstract class Character extends GameObject {
         fps: 12,
         loop: initial.loop,
         layer: "world",
-        scale: data.scale,
-        pivotX: data.pivotX,
-        pivotY: data.pivotY,
+        scale: (data as any).scale,
+        pivotX: (data as any).pivotX,
+        pivotY: (data as any).pivotY,
       } as any);
 
       this.sprite = node;
       this.spriteRoot.add(node);
 
-      // flip은 spriteRoot에만
       this.spriteRoot.scaleX = initial.flipX ? -1 : 1;
-
       this.lastAnim = initial.animation;
       return;
     }
 
-    // 데이터가 불완전하면 fallback
     this.#buildFallback();
   }
 
@@ -237,5 +234,29 @@ export abstract class Character extends GameObject {
     if (typeof s.play === "function") return void s.play(animation, loop);
     s.animation = animation;
     if ("loop" in s) s.loop = loop;
+  }
+
+  /**
+   * ✅ “이 데이터가 같은 리소스냐?”를 판단하는 키 생성
+   * - getCharacterData가 atlasKey 같은 안정 키를 넣어주면 베스트
+   */
+  #calcVisualKey(data: CharacterData | null) {
+    if (!data) return "fallback";
+    const d: any = data;
+
+    const atlasKey =
+      d.atlasKey ??
+      d.atlas?.meta?.image ??
+      d.atlas?.image ??
+      JSON.stringify(d.atlas ?? {})?.slice(0, 200); // 최후 수단 (너무 커지는 걸 방지)
+
+    return [
+      d.spriteType ?? "",
+      d.src ?? "",
+      atlasKey ?? "",
+      d.scale ?? 1,
+      d.pivotX ?? 0,
+      d.pivotY ?? 0,
+    ].join("|");
   }
 }

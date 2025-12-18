@@ -88,8 +88,8 @@ export async function fetchNftsByIds(params: {
 }
 
 export type NftRow = {
-  nft_address: string;
-  token_id: number;
+  contract_addr: string;
+  id: number;
   holder: string;
   style?: string;
   parts?: string;
