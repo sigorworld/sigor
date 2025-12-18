@@ -10,13 +10,22 @@ import type {
 
 type TokenProvider = () => string | null;
 
-const MOVE_SEND_INTERVAL_MS = 60; // 서버로 move 보내는 최소 간격
-const LOCAL_MOVE_SPEED = 3.2; // units/sec
-const REMOTE_SMOOTH = 14; // 값이 클수록 타겟에 빨리 붙음(원격 보간)
+const MOVE_SEND_INTERVAL_MS = 60; // 서버로 move 보내는 최소 간격(ms)
+const LOCAL_MOVE_SPEED = 200;     // units/sec
+const REMOTE_SMOOTH = 14;         // 값이 클수록 타겟에 빨리 붙음(원격 보간)
+
+// ✅ 클릭/탭 이동 튜닝
+const AUTO_STOP_DISTANCE = 0.12;   // 이 거리 이내면 도착 처리 (world unit)
+const AUTO_SLOW_RADIUS = 0.9;      // 이 거리 이내에선 감속 시작
+const AUTO_MIN_SPEED_RATIO = 0.18; // 감속 시 최소 속도 비율(너무 기어가지 않게)
 
 function expLerp(current: number, target: number, dt: number, k: number) {
   const t = 1 - Math.exp(-k * dt);
   return current + (target - current) * t;
+}
+
+function clamp01(v: number) {
+  return Math.max(0, Math.min(1, v));
 }
 
 export class WorldService extends EventTarget {
@@ -40,10 +49,13 @@ export class WorldService extends EventTarget {
   // ✅ server targets (원격 보간용)
   private serverTargets = new Map<EvmAddress, PlayerState>();
 
-  // input (예측 이동)
+  // manual input (키보드/드래그 조이스틱)
   private inputDx = 0;
   private inputDy = 0;
   private lastMoveSentAt = 0;
+
+  // ✅ 클릭/탭 이동 타겟
+  private autoTarget: { x: number; y: number } | null = null;
 
   // chat queue (WS open 전 전송한 메시지 보장)
   private pendingChat: WorldWsClientMessage[] = [];
@@ -103,20 +115,31 @@ export class WorldService extends EventTarget {
     this.players.clear();
     this.serverTargets.clear();
     this.pendingChat = [];
+    this.autoTarget = null;
+    this.inputDx = 0;
+    this.inputDy = 0;
 
     this.dispatchEvent(new CustomEvent("disconnect"));
   }
 
-  /** -1~1 */
+  /** -1~1 (키보드/조이스틱). 입력이 들어오면 auto-move 취소 */
   setInputDirection(dx: number, dy: number) {
     const len = Math.hypot(dx, dy);
     if (len > 1e-6) {
       this.inputDx = dx / len;
       this.inputDy = dy / len;
+      this.autoTarget = null; // ✅ 수동 입력이 있으면 자동 이동 취소
     } else {
       this.inputDx = 0;
       this.inputDy = 0;
     }
+  }
+
+  /** ✅ 화면 클릭/탭 이동: 목표 좌표로 자연스럽게 걸어가게 함 */
+  setMoveTarget(x: number, y: number) {
+    if (!this.me) return;
+    this.autoTarget = { x, y };
+    this.#ensureLoop();
   }
 
   /** 채팅 전송(연결 전이면 큐에 쌓았다가 open 후 flush) */
@@ -131,17 +154,6 @@ export class WorldService extends EventTarget {
       return;
     }
     this.#sendRaw(msg);
-  }
-
-  /** 클릭 이동 등 */
-  moveTo(x: number, y: number, dir?: string) {
-    if (!this.me) return;
-    const updatedAt = Date.now();
-    const next: PlayerState = { account: this.me, x, y, dir, updatedAt };
-    this.players.set(this.me, next);
-    this.serverTargets.set(this.me, next);
-    this.dispatchEvent(new CustomEvent("players", { detail: this.players }));
-    this.#sendRaw({ type: "move", x, y, dir } as any);
   }
 
   /* ---------------- internal ---------------- */
@@ -345,38 +357,69 @@ export class WorldService extends EventTarget {
     }
   }
 
-  /** ✅ 프레임 루프: (1) 내 이동 예측 (2) 원격 보간 (3) move throttle */
+  /** ✅ 프레임 루프: (1) 내 이동(수동/자동) (2) 원격 보간 (3) move throttle */
   private loop(now: number) {
     if (!this.runningLoop) return;
 
     const dt = Math.min(0.05, Math.max(0, (now - this.lastFrameAt) / 1000));
     this.lastFrameAt = now;
 
-    // ---- 내 이동 예측 ----
+    // ---- 내 이동 (수동 input 우선, 없으면 autoTarget) ----
     if (this.me) {
       const cur = this.players.get(this.me);
-      if (cur && (this.inputDx !== 0 || this.inputDy !== 0)) {
-        const nx = cur.x + this.inputDx * LOCAL_MOVE_SPEED * dt;
-        const ny = cur.y + this.inputDy * LOCAL_MOVE_SPEED * dt;
+      if (cur) {
+        let mdx = this.inputDx;
+        let mdy = this.inputDy;
+        let speed = LOCAL_MOVE_SPEED;
 
-        const dir =
-          Math.abs(this.inputDx) > Math.abs(this.inputDy)
-            ? this.inputDx > 0
-              ? "right"
-              : "left"
-            : this.inputDy > 0
-              ? "down"
-              : "up";
+        // ✅ 수동 입력이 없고 autoTarget이 있으면 그쪽으로 이동
+        if (mdx === 0 && mdy === 0 && this.autoTarget) {
+          const tx = this.autoTarget.x;
+          const ty = this.autoTarget.y;
+          const vx = tx - cur.x;
+          const vy = ty - cur.y;
+          const dist = Math.hypot(vx, vy);
 
-        const updatedAt = Date.now();
-        const next: PlayerState = { account: this.me, x: nx, y: ny, dir, updatedAt };
+          if (dist <= AUTO_STOP_DISTANCE) {
+            this.autoTarget = null;
+            mdx = 0;
+            mdy = 0;
+          } else {
+            mdx = vx / dist;
+            mdy = vy / dist;
 
-        this.players.set(this.me, next);
-        this.serverTargets.set(this.me, next);
+            // ✅ 타겟 근처에서 감속
+            const slowT = clamp01(dist / AUTO_SLOW_RADIUS);
+            const ratio = Math.max(AUTO_MIN_SPEED_RATIO, slowT);
+            speed = LOCAL_MOVE_SPEED * ratio;
+          }
+        }
 
-        if (now - this.lastMoveSentAt >= MOVE_SEND_INTERVAL_MS) {
-          this.lastMoveSentAt = now;
-          this.#sendRaw({ type: "move", x: nx, y: ny, dir } as any);
+        if (mdx !== 0 || mdy !== 0) {
+          const nx = cur.x + mdx * speed * dt;
+          const ny = cur.y + mdy * speed * dt;
+
+          const dir =
+            Math.abs(mdx) > Math.abs(mdy)
+              ? mdx > 0
+                ? "right"
+                : "left"
+              : mdy > 0
+                ? "down"
+                : "up";
+
+          const updatedAt = Date.now();
+          const next: PlayerState = { account: this.me, x: nx, y: ny, dir, updatedAt };
+
+          this.players.set(this.me, next);
+          this.serverTargets.set(this.me, next);
+
+          this.dispatchEvent(new CustomEvent("players", { detail: this.players }));
+
+          if (now - this.lastMoveSentAt >= MOVE_SEND_INTERVAL_MS) {
+            this.lastMoveSentAt = now;
+            this.#sendRaw({ type: "move", x: nx, y: ny, dir } as any);
+          }
         }
       }
     }
@@ -404,8 +447,11 @@ export class WorldService extends EventTarget {
         updatedAt: target.updatedAt ?? cur.updatedAt,
       };
 
-      // 너무 자잘한 변동은 무시
-      if (Math.abs(next.x - cur.x) > 1e-4 || Math.abs(next.y - cur.y) > 1e-4 || next.dir !== cur.dir) {
+      if (
+        Math.abs(next.x - cur.x) > 1e-4 ||
+        Math.abs(next.y - cur.y) > 1e-4 ||
+        next.dir !== cur.dir
+      ) {
         this.players.set(account, next);
         changed = true;
       }

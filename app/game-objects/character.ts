@@ -33,7 +33,7 @@ export abstract class Character extends GameObject {
     this.bubbleEl = document.createElement("div");
     this.bubbleEl.className = "speech";
     this.bubbleEl.style.display = "none";
-    const bubbleNode = new DomContainerNode(this.bubbleEl, { x: 0, y: -34, layer: "hud" } as any);
+    const bubbleNode = new DomContainerNode(this.bubbleEl, { x: 0, y: -64, layer: "hud" } as any);
     this.add(bubbleNode);
 
     this.#buildVisual();
@@ -89,6 +89,8 @@ export abstract class Character extends GameObject {
         fps: 12,
         loop: initial.loop,
         layer: "world",
+        scale: this.data.scale,
+        pivotY: this.data.pivotY,
       } as any);
 
       this.sprite = node;

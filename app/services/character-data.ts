@@ -42,6 +42,8 @@ export const defaultCharacterData: CharacterData = {
   src: DEFAULT_CHARACTER_SHEET_SRC,
   atlas: dscMatesAtlas,
   actions: dscMatesActions,
+  scale: 2,
+  pivotY: 10,
 };
 
 export function resolveCharacterAnimation(params: {

@@ -10,7 +10,7 @@ const MAX_CHAT_LEN = 10_000;
 const MAX_INIT_MESSAGES = 50;
 
 // (0,0) 주변 랜덤 스폰 범위 (원하면 조절)
-const SPAWN_RADIUS = 2.5;
+const SPAWN_RADIUS = 25;
 
 // 너무 겹치면 조금씩 더 벌리기 위한 간단한 재시도
 const MAX_SPAWN_TRIES = 12;
