@@ -2,38 +2,40 @@ import { el } from "@webtaku/el";
 import "./game-root.css";
 
 import { Renderer } from "kiwiengine";
-
 import { WorldInputController } from "../game-objects/input-controller";
 import { globalWorld, globalWorldService } from "../game-objects/world";
-
-import { BottomChatUI, createBottomChat } from "./hud/bottom-chat";
+import { createBottomChat, type BottomChatUI } from "./hud/bottom-chat";
 import { createTopBar } from "./hud/top-bar";
 
 let rootEl: HTMLElement | null = null;
 let renderer: Renderer | null = null;
 let input: WorldInputController | null = null;
-
 let bottomChat: BottomChatUI | null = null;
 
 export function mountGameRoot() {
   if (rootEl) return;
 
+  // ✅ 서비스 시작(여기서 한 번만)
+  globalWorldService.start();
+
   rootEl = el("div.game-root") as HTMLElement;
   const worldEl = el("div.game-world") as HTMLElement;
 
+  // ✅ 캐릭터가 그려질 world 레이어를 반드시 추가
   renderer = new Renderer(worldEl, {
-    layers: [{ name: "hud", drawOrder: 1 }],
+    layers: [
+      { name: "world", drawOrder: 0 },
+      { name: "hud", drawOrder: 10 },
+    ],
   });
 
   renderer.add(globalWorld);
 
-  // ✅ 입력은 game-root에서만 생성/attach (렌더 트리에 add 하지 않음)
+  // 입력
   input = new WorldInputController(globalWorldService, renderer);
   input.attach();
 
   const topBar = createTopBar();
-
-  // ✅ 서비스 주입 (UI는 네트워크/토큰 몰라도 됨)
   bottomChat = createBottomChat(globalWorldService);
 
   rootEl.append(worldEl, topBar, bottomChat.el);
@@ -41,15 +43,12 @@ export function mountGameRoot() {
 }
 
 export function unmountGameRoot() {
-  // ✅ UI 컴포넌트 정리
   bottomChat?.remove();
   bottomChat = null;
 
-  // ✅ 입력 정리
   input?.detach();
   input = null;
 
-  // ✅ 렌더러 정리
   renderer?.remove();
   renderer = null;
 

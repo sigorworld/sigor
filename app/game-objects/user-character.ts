@@ -1,4 +1,4 @@
-import { EvmAddress } from "../types/world";
+import type { EvmAddress } from "../types/world";
 import { Character } from "./character";
 
 export class UserCharacter extends Character {
