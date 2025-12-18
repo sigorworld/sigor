@@ -1,3 +1,4 @@
+import { tokenManager } from "@gaiaprotocol/client-common";
 import { el } from "@webtaku/el";
 import "./bottom-chat.css";
 
@@ -6,11 +7,6 @@ import { globalProfileStore } from "../../services/profile-store";
 import type { WorldService } from "../../services/world-service";
 
 const MAX_UI_MESSAGES = 120;
-
-function shorten(addr: string) {
-  if (!addr?.startsWith("0x") || addr.length < 12) return addr;
-  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
-}
 
 function isNearBottom(container: HTMLElement, thresholdPx = 40) {
   return container.scrollTop + container.clientHeight >= container.scrollHeight - thresholdPx;
@@ -55,13 +51,32 @@ export function createBottomChat(service: WorldService): BottomChatUI {
 
   const sendBtn = el("button.bottom-chat-send", { type: "button" }, "전송") as HTMLButtonElement;
 
-  const note = el("div.bottom-chat-note", "WASD/방향키 이동 · 터치는 화면 드래그로 이동");
+  // NOTE 문구 업데이트(탭 이동 반영)
+  const note = el("div.bottom-chat-note", "WASD/방향키 이동 · 터치: 탭 이동/드래그 조이스틱");
 
   const inputRow = el("div.bottom-chat-input-row", input, sendBtn);
   const body = el("div.bottom-chat-body", log, inputRow, note);
 
   inner.append(header, body);
   wrap.append(inner);
+
+  // -----------------------------
+  // visibility: 로그인 상태에서만 보이기
+  // -----------------------------
+  function clearLog() {
+    log.innerHTML = "";
+  }
+
+  function syncVisibility() {
+    const visible = tokenManager.has();
+    wrap.style.display = visible ? "flex" : "none";
+    if (!visible) clearLog();
+  }
+
+  // 초기 반영 + 로그인/로그아웃 시 반영
+  syncVisibility();
+  tokenManager.on("signedIn", () => syncVisibility());
+  tokenManager.on("signedOut", () => syncVisibility());
 
   // -----------------------------
   // IME (맥 한글) 조합 처리
@@ -81,9 +96,11 @@ export function createBottomChat(service: WorldService): BottomChatUI {
   }
 
   function appendMessage(m: { account: string; text: string }) {
+    // ✅ 로그인 상태 아니면 UI 자체가 숨김이므로, 굳이 렌더하지 않음
+    if (!tokenManager.has()) return;
+
     const shouldStick = isNearBottom(log);
 
-    // 닉네임 프리로드
     if (m.account.startsWith("0x")) void globalProfileStore.ensure([m.account as any]);
 
     const whoEl = el("div.bottom-chat-who", displayName(m.account)) as HTMLElement;
@@ -96,16 +113,11 @@ export function createBottomChat(service: WorldService): BottomChatUI {
     ) as HTMLElement;
 
     row.setAttribute("data-account", m.account);
-
     log.append(row);
 
     while (log.childElementCount > MAX_UI_MESSAGES) log.firstElementChild?.remove();
 
     if (shouldStick) requestAnimationFrame(() => (log.scrollTop = log.scrollHeight));
-  }
-
-  function clearLog() {
-    log.innerHTML = "";
   }
 
   // ✅ 프로필 로드 후 기존 행 닉네임 갱신
@@ -139,13 +151,10 @@ export function createBottomChat(service: WorldService): BottomChatUI {
   sendBtn.onclick = () => void sendCurrent();
 
   input.addEventListener("keydown", (ev) => {
-    // ✅ 조합 중 Enter는 전송 금지 (맥 한글 마지막 글자 쪼개짐 방지)
-    // - ev.isComposing: 크롬/엣지
-    // - keyCode 229: 일부 사파리/IME 케이스
     const ime = (ev as any).isComposing || composing || (ev as any).keyCode === 229;
 
     if (ev.key === "Enter" && !ev.shiftKey) {
-      if (ime) return; // 조합 중이면 줄바꿈/전송 모두 막고, 조합 완료 후 Enter로 전송
+      if (ime) return;
       ev.preventDefault();
       void sendCurrent();
     }
@@ -161,8 +170,14 @@ export function createBottomChat(service: WorldService): BottomChatUI {
     "init",
     (e: any) => {
       clearLog();
+
+      // ✅ 로그인 상태일 때만 init log 렌더
+      if (!tokenManager.has()) return;
+
       const recent = (e.detail?.recentMessages ?? []) as any[];
-      const accounts = recent.map((m) => m.account).filter((a) => typeof a === "string" && a.startsWith("0x"));
+      const accounts = recent
+        .map((m) => m.account)
+        .filter((a) => typeof a === "string" && a.startsWith("0x"));
       if (accounts.length) void globalProfileStore.ensure(accounts as any);
 
       for (const m of recent) {
@@ -198,6 +213,11 @@ export function createBottomChat(service: WorldService): BottomChatUI {
 
   // public api
   const setVisible = (visible: boolean) => {
+    // 외부에서 강제 hide/show 하더라도 "로그인 조건"은 유지
+    if (!tokenManager.has()) {
+      wrap.style.display = "none";
+      return;
+    }
     wrap.style.display = visible ? "flex" : "none";
   };
 
