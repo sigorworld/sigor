@@ -31,13 +31,18 @@ type BaseCharacterData = {
 
 type SpritesheetCharacterData = {
   spriteType: 'spritesheet',
-  atlas: Atlas
+  atlas: Atlas,
+  src: string,
 } & BaseCharacterData
 
 type SpineCharacterData = {
-  spriteType: 'spine'
+  spriteType: 'spine',
+  atlas: string,
+  texture: string,
+  json: string,
 } & BaseCharacterData
 
 type CharacterData = SpritesheetCharacterData | SpineCharacterData
 
-export { CharacterData }
+export { CharacterData, SpineCharacterData, SpritesheetCharacterData }
+

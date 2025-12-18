@@ -1,11 +1,11 @@
-import type { CharacterData } from "../types/character";
+import type { CharacterData, SpritesheetCharacterData } from "../types/character";
 import { buildAtlas } from "../utils/atlas";
 
 export type Dir4 = "up" | "down" | "left" | "right";
 
 export const DEFAULT_CHARACTER_SHEET_SRC = "https://sigorworld.github.io/static-sigor-assets/characters/dogesoundclub-mates/0.png";
 
-const dscCharacterData: CharacterData = {
+const dscCharacterData: Omit<SpritesheetCharacterData, 'src'> = {
   spriteType: "spritesheet",
   atlas: {
     frames: {
@@ -40,7 +40,7 @@ const dscCharacterData: CharacterData = {
   pivotY: 10,
 }
 
-const sigorSparrowCharacterData: CharacterData = {
+const sigorSparrowCharacterData: Omit<SpritesheetCharacterData, 'src'> = {
   spriteType: "spritesheet",
   atlas: buildAtlas({
     imageWidth: 245,
@@ -74,7 +74,7 @@ const sigorSparrowCharacterData: CharacterData = {
   pivotY: 34,
 }
 
-const kcdKongzCharacterData: CharacterData = {
+const kcdKongzCharacterData: Omit<SpritesheetCharacterData, 'src'> = {
   spriteType: "spritesheet",
   atlas: buildAtlas({
     imageWidth: 1536,
@@ -96,7 +96,7 @@ const kcdKongzCharacterData: CharacterData = {
   pivotY: 34,
 }
 
-const babypingCharacterData: CharacterData = {
+const babypingCharacterData: Omit<SpritesheetCharacterData, 'src'> = {
   spriteType: "spritesheet",
   atlas: buildAtlas({
     imageWidth: 360,
@@ -129,11 +129,51 @@ const babypingCharacterData: CharacterData = {
   pivotY: 28,
 }
 
-export const defaultCharacterData: CharacterData = {
-  // @ts-expect-error: CharacterData에 src가 optional이 아닌 경우 프로젝트 타입에 맞춰 추가/수정하세요.
+const defaultCharacterData: CharacterData = {
   src: DEFAULT_CHARACTER_SHEET_SRC,
   ...dscCharacterData,
 };
+
+export function getCharacterData(app: {
+  nftAddress: string;
+  tokenId: number;
+  parts?: any;
+  image?: string;
+}): CharacterData {
+  if (app.nftAddress === '0xE47E90C58F8336A2f24Bcd9bCB530e2e02E1E8ae') {
+    return {
+      src: `https://sigorworld.github.io/static-sigor-assets/characters/dogesoundclub-mates/${app.tokenId}.png`,
+      ...dscCharacterData,
+    }
+  } else if (app.nftAddress === '0xDeDd727ab86bce5D416F9163B2448860BbDE86d4') {
+    const imageSrc = app.image ?? "";
+    const parts = imageSrc.split("/");
+    const imagesIndex = parts.indexOf("images");
+    const type = imagesIndex !== -1 ? parts[imagesIndex + 1] : null;
+    return {
+      src: `https://sigorworld.github.io/static-sigor-assets/characters/dogesoundclub-biased-mates/${type}/${app.tokenId}.png`,
+      ...dscCharacterData,
+    }
+  } else if (app.nftAddress === '0xF967431fb8F5B4767567854dE5448D2EdC21a482') {
+    return {
+      src: "https://sigorworld.github.io/static-sigor-assets/characters/kingcrowndao-kongz/temp-character.png",
+      ...kcdKongzCharacterData,
+    }
+  } else if (app.nftAddress === '0x7340a44AbD05280591377345d21792Cdc916A388') {
+    return {
+      src: "https://sigorworld.github.io/static-sigor-assets/characters/sigor-sparrows/temp-character.png",
+      ...sigorSparrowCharacterData,
+    }
+  } else if (app.nftAddress === '0x595b299Db9d83279d20aC37A85D36489987d7660') {
+    const bodyType = (app.parts?.Body ?? "").replace(/\s+/g, "").toLowerCase();
+    return {
+      src: `https://sigorworld.github.io/static-sigor-assets/characters/babyping/${bodyType}/spritesheet.png`,
+      ...babypingCharacterData,
+    }
+  } else {
+    return defaultCharacterData
+  }
+}
 
 export function resolveCharacterAnimation(params: {
   actions: {

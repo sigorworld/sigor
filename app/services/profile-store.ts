@@ -3,9 +3,9 @@ import { fetchProfiles, type Profile } from "../api/profile";
 import type { EvmAddress } from "../types/world";
 
 type Appearance = {
-  style?: string;
-  parts?: string;     // 필요하면 JSON string 그대로(혹은 파싱한 객체로 바꿔도 됨)
-  dialogue?: string;
+  nftAddress: string;
+  tokenId: number;
+  parts?: any;
   image?: string;
 };
 
@@ -26,10 +26,10 @@ function primaryKey(p: Profile | null): string | null {
 function toAppearance(nft: NftRow | null): Appearance | null {
   if (!nft) return null;
   return {
-    style: nft.style,
+    nftAddress: nft.nft_address,
+    tokenId: nft.token_id,
     parts: nft.parts,
-    dialogue: nft.dialogue,
-    image: nft.image,
+    image: nft.image
   };
 }
 

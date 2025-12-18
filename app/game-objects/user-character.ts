@@ -1,76 +1,54 @@
-import { GameObject } from "kiwiengine";
+import { getCharacterData } from "../services/character-data";
 import type { EvmAddress } from "../types/world";
+import { Character } from "./character"; // 경로는 프로젝트에 맞게
 
 type Appearance = {
-  style?: string;
-  parts?: string;
-  dialogue?: string;
+  nftAddress: string;
+  tokenId: number;
+  parts?: any;
   image?: string;
 };
 
-export class UserCharacter extends GameObject {
+export class UserCharacter extends Character {
   private account: EvmAddress;
 
   private nicknameText: string = "";
   private appearance: Appearance | null = null;
 
   constructor(account: EvmAddress) {
-    super({ layer: "world" } as any);
+    super();
     this.account = account;
 
-    // 기본 스프라이트/상태 초기화
-    // this.initSprite();
+    // 초기 표시(원하면 주소로)
+    this.setNickname(account);
   }
 
   applyPlayerState(state: any) {
-    // 기존 코드 유지
+    // 기존 코드 유지 (state -> PlayerState로 맞추면 더 좋음)
+    super.applyPlayerState(state);
   }
 
   setNickname(n: string) {
     this.nicknameText = n;
-    // 실제 화면 반영
-    // this.nameTag.setText(n)
+    super.setNickname(n);
   }
 
   showSpeech(text: string) {
-    // 기존 말풍선 로직 유지
+    super.showSpeech(text);
   }
 
   applyAppearance(app: Appearance | null | undefined) {
     if (app === undefined) return; // 아직 로드 전이면 무시
+
     this.appearance = app ?? null;
 
-    // 1) style 반영
-    if (app?.style) {
-      // 예: this.setStyle(app.style)
-    } else {
-      // 예: this.resetStyleToDefault()
+    // ✅ 없으면 fallback, 있으면 캐릭터 데이터 생성 후 적용
+    if (!app) {
+      this.setCharacterData(null);
+      return;
     }
 
-    // 2) parts 반영 (JSON string일 가능성)
-    if (app?.parts) {
-      try {
-        // parts가 JSON string이라면 파싱해서 사용
-        const parsed = JSON.parse(app.parts);
-        // 예: this.setParts(parsed)
-      } catch {
-        // 파싱 실패 시 string 기반 fallback
-        // 예: this.setPartsRaw(app.parts)
-      }
-    } else {
-      // 예: this.clearParts()
-    }
-
-    // 3) image 반영 (절대/상대 경로 모두 가능)
-    if (app?.image) {
-      // 예: this.setSpriteFromUrl(app.image)
-    } else {
-      // 예: this.resetImage()
-    }
-
-    // 4) dialogue 프리셋 등 (선택)
-    if (app?.dialogue) {
-      // 예: this.setDefaultDialogue(app.dialogue)
-    }
+    const data = getCharacterData(app);
+    this.setCharacterData(data);
   }
 }
