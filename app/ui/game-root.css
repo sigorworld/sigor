@@ -46,3 +46,9 @@
   user-select: none;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
 }
+
+.game-world {
+  touch-action: none;
+  /* 모바일 드래그/탭 안정화 */
+  background: linear-gradient(#2f8f3a, #2a7b33);
+}

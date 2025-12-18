@@ -24,8 +24,7 @@
   border: 1px solid rgba(0, 0, 0, 0.10);
 
   /* ✅ 화이트 배경 */
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.5);
 
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
   overflow: hidden;
@@ -63,7 +62,7 @@
   border-radius: 12px;
 
   border: 1px solid rgba(0, 0, 0, 0.10);
-  background: rgba(255, 255, 255, 0.70);
+  background: rgba(255, 255, 255, 0.5);
   color: rgba(10, 12, 16, 0.90);
 
   cursor: pointer;

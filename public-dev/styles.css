@@ -2485,6 +2485,12 @@ img.jazzicon {
   user-select: none;
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
 }
+
+.game-world {
+  touch-action: none;
+  /* 모바일 드래그/탭 안정화 */
+  background: linear-gradient(#2f8f3a, #2a7b33);
+}
 /*!**********************************************************************************************************!*\
   !*** css ./node_modules/css-loader/dist/cjs.js??ruleSet[1].rules[1].use[1]!./app/ui/hud/bottom-chat.css ***!
   \**********************************************************************************************************/
@@ -2514,8 +2520,7 @@ img.jazzicon {
   border: 1px solid rgba(0, 0, 0, 0.10);
 
   /* ✅ 화이트 배경 */
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.5);
 
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
   overflow: hidden;
@@ -2553,7 +2558,7 @@ img.jazzicon {
   border-radius: 12px;
 
   border: 1px solid rgba(0, 0, 0, 0.10);
-  background: rgba(255, 255, 255, 0.70);
+  background: rgba(255, 255, 255, 0.5);
   color: rgba(10, 12, 16, 0.90);
 
   cursor: pointer;

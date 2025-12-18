@@ -388,10 +388,33 @@ export class WorldService extends EventTarget {
             mdx = vx / dist;
             mdy = vy / dist;
 
-            // ✅ 타겟 근처에서 감속
             const slowT = clamp01(dist / AUTO_SLOW_RADIUS);
             const ratio = Math.max(AUTO_MIN_SPEED_RATIO, slowT);
             speed = LOCAL_MOVE_SPEED * ratio;
+
+            // ✅ 이번 프레임 이동량이 목표 거리보다 크면 목표에 딱 붙이고 종료
+            const step = speed * dt;
+            if (step >= dist) {
+              const dir =
+                Math.abs(mdx) > Math.abs(mdy)
+                  ? mdx > 0 ? "right" : "left"
+                  : mdy > 0 ? "down" : "up";
+
+              const updatedAt = Date.now();
+              const next: PlayerState = { account: this.me!, x: tx, y: ty, dir, updatedAt };
+
+              this.players.set(this.me!, next);
+              this.serverTargets.set(this.me!, next);
+              this.autoTarget = null;
+
+              // move 전송(마지막 한 번)
+              if (now - this.lastMoveSentAt >= MOVE_SEND_INTERVAL_MS) {
+                this.lastMoveSentAt = now;
+                this.#sendRaw({ type: "move", x: tx, y: ty, dir } as any);
+              }
+
+              // 여기서 끝내면 아래 이동 로직이 중복 수행될 수 있으니 return하거나 플래그로 스킵하세요.
+            }
           }
         }
 

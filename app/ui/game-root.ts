@@ -2,6 +2,7 @@ import { el } from "@webtaku/el";
 import "./game-root.css";
 
 import { Renderer } from "kiwiengine";
+import { GrassField } from "../game-objects/grass-field"; // ✅ 추가
 import { WorldInputController } from "../game-objects/input-controller";
 import { globalWorld, globalWorldService } from "../game-objects/world";
 import { createBottomChat, type BottomChatUI } from "./hud/bottom-chat";
@@ -15,23 +16,25 @@ let bottomChat: BottomChatUI | null = null;
 export function mountGameRoot() {
   if (rootEl) return;
 
-  // ✅ 서비스 시작(여기서 한 번만)
   globalWorldService.start();
 
   rootEl = el("div.game-root") as HTMLElement;
-
   const worldEl = el("div.game-world") as HTMLElement;
 
   renderer = new Renderer(worldEl, {
     layers: [
+      { name: "bg", drawOrder: -10 },   // ✅ 배경 레이어
       { name: "world", drawOrder: 0 },
       { name: "hud", drawOrder: 10 },
     ],
   });
 
+  // ✅ 잔디 평원 먼저
+  renderer.add(new GrassField({ size: 8000, patches: 160 }));
+
+  // ✅ 그 위에 월드(캐릭터들)
   renderer.add(globalWorld);
 
-  // ✅ 여기 중요: worldEl 전달
   input = new WorldInputController(globalWorldService, renderer, worldEl);
   input.attach();
 

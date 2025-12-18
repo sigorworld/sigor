@@ -3,14 +3,24 @@ import { defaultCharacterData, resolveCharacterAnimation } from "../services/cha
 import type { CharacterData } from "../types/character";
 import type { PlayerState } from "../types/world";
 
+const MOVE_EPS = 0.25;          // 좌표 단위가 px에 가까우면 0.001은 너무 작습니다.
+const IDLE_TIMEOUT_MS = 110;    // 마지막 움직임 이후 이 시간 지나면 idle로 전환
+
 export abstract class Character extends GameObject {
   private data: CharacterData;
+
+  // ✅ 스프라이트만 담는 컨테이너(여기만 flip)
+  private spriteRoot: GameObject;
   private sprite: any | null = null;
 
   private lastX = 0;
   private lastY = 0;
   private lastDir: string | undefined;
   private lastAnim = "";
+
+  // idle 강제 전환 타이머(“마지막 업데이트 이후 이벤트가 더 안 오는” 케이스 방지)
+  private lastMotionAt = 0;
+  private idleTimer: number | null = null;
 
   // UI
   private nameEl: HTMLDivElement;
@@ -22,14 +32,18 @@ export abstract class Character extends GameObject {
 
     this.data = opts?.data ?? defaultCharacterData;
 
-    // ✅ 닉네임(아래)
+    // ✅ (중요) 스프라이트 루트 먼저 추가
+    this.spriteRoot = new GameObject({ layer: "world" } as any);
+    this.add(this.spriteRoot);
+
+    // ✅ 닉네임(아래) - 더 이상 flip 안됨
     this.nameEl = document.createElement("div");
     this.nameEl.className = "name-tag";
     this.nameEl.textContent = "";
     const nameNode = new DomContainerNode(this.nameEl, { x: 0, y: 26, layer: "hud" } as any);
     this.add(nameNode);
 
-    // ✅ 말풍선(위)
+    // ✅ 말풍선(위) - 더 이상 flip 안됨
     this.bubbleEl = document.createElement("div");
     this.bubbleEl.className = "speech";
     this.bubbleEl.style.display = "none";
@@ -37,6 +51,17 @@ export abstract class Character extends GameObject {
     this.add(bubbleNode);
 
     this.#buildVisual();
+  }
+
+  // ✅ 제거 시 타이머 정리
+  override remove() {
+    if (this.bubbleHideTimer) window.clearTimeout(this.bubbleHideTimer);
+    this.bubbleHideTimer = null;
+
+    if (this.idleTimer) window.clearTimeout(this.idleTimer);
+    this.idleTimer = null;
+
+    super.remove();
   }
 
   setNickname(nicknameOrAddress: string) {
@@ -65,7 +90,23 @@ export abstract class Character extends GameObject {
 
     const dx = this.x - this.lastX;
     const dy = this.y - this.lastY;
-    const moving = Math.hypot(dx, dy) > 0.001;
+    const moving = Math.hypot(dx, dy) > MOVE_EPS;
+
+    // ✅ 이동 중이면 마지막 움직임 시간 갱신 + idle 타이머 예약
+    if (moving) {
+      this.lastMotionAt = performance.now();
+      if (this.idleTimer) window.clearTimeout(this.idleTimer);
+      this.idleTimer = window.setTimeout(() => {
+        const since = performance.now() - this.lastMotionAt;
+        if (since >= IDLE_TIMEOUT_MS) {
+          this.#applyAnimation({ dir: this.lastDir, moving: false });
+        }
+      }, IDLE_TIMEOUT_MS + 5);
+    } else {
+      // 멈췄으면 예약된 타이머 제거
+      if (this.idleTimer) window.clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
 
     this.#applyAnimation({ dir: this.lastDir, moving });
   }
@@ -94,8 +135,11 @@ export abstract class Character extends GameObject {
       } as any);
 
       this.sprite = node;
-      this.add(node);
-      this.scaleX = initial.flipX ? -1 : 1;
+      this.spriteRoot.add(node);
+
+      // ✅ flip은 spriteRoot에만
+      this.spriteRoot.scaleX = initial.flipX ? -1 : 1;
+
       this.lastAnim = initial.animation;
       return;
     }
@@ -108,7 +152,8 @@ export abstract class Character extends GameObject {
       stroke: { color: 0x000000, width: 1 },
       layer: "world",
     } as any);
-    this.add(box);
+
+    this.spriteRoot.add(box);
     this.sprite = null;
   }
 
@@ -122,7 +167,8 @@ export abstract class Character extends GameObject {
       moving: params.moving,
     });
 
-    this.scaleX = flipX ? -1 : 1;
+    // ✅ flip은 spriteRoot에만
+    this.spriteRoot.scaleX = flipX ? -1 : 1;
 
     if (!this.sprite) return;
     if (this.lastAnim === animation) return;
