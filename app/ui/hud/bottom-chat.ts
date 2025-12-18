@@ -2,6 +2,7 @@ import { el } from "@webtaku/el";
 import "./bottom-chat.css";
 
 import { showErrorAlert } from "../../components/alert";
+import { globalProfileStore } from "../../services/profile-store";
 import type { WorldService } from "../../services/world-service";
 
 const MAX_UI_MESSAGES = 120;
@@ -54,7 +55,7 @@ export function createBottomChat(service: WorldService): BottomChatUI {
 
   const sendBtn = el("button.bottom-chat-send", { type: "button" }, "전송") as HTMLButtonElement;
 
-  const note = el("div.bottom-chat-note", "WASD/방향키로 이동 · 채팅창 포커스 중에는 이동 입력이 막힘");
+  const note = el("div.bottom-chat-note", "WASD/방향키 이동 · 터치는 화면 드래그로 이동");
 
   const inputRow = el("div.bottom-chat-input-row", input, sendBtn);
   const body = el("div.bottom-chat-body", log, inputRow, note);
@@ -62,14 +63,39 @@ export function createBottomChat(service: WorldService): BottomChatUI {
   inner.append(header, body);
   wrap.append(inner);
 
+  // -----------------------------
+  // IME (맥 한글) 조합 처리
+  // -----------------------------
+  let composing = false;
+  input.addEventListener("compositionstart", () => (composing = true));
+  input.addEventListener("compositionend", () => (composing = false));
+
+  // -----------------------------
+  // render helpers
+  // -----------------------------
+  function displayName(account: string) {
+    if (account.startsWith("0x")) {
+      return globalProfileStore.getDisplayName(account as any);
+    }
+    return account;
+  }
+
   function appendMessage(m: { account: string; text: string }) {
     const shouldStick = isNearBottom(log);
 
+    // 닉네임 프리로드
+    if (m.account.startsWith("0x")) void globalProfileStore.ensure([m.account as any]);
+
+    const whoEl = el("div.bottom-chat-who", displayName(m.account)) as HTMLElement;
+    whoEl.setAttribute("data-account", m.account);
+
     const row = el(
       "div.bottom-chat-row",
-      el("div.bottom-chat-who", shorten(m.account)),
+      whoEl,
       el("div.bottom-chat-text", m.text)
-    );
+    ) as HTMLElement;
+
+    row.setAttribute("data-account", m.account);
 
     log.append(row);
 
@@ -82,6 +108,20 @@ export function createBottomChat(service: WorldService): BottomChatUI {
     log.innerHTML = "";
   }
 
+  // ✅ 프로필 로드 후 기존 행 닉네임 갱신
+  const onProfileUpdate = () => {
+    const whoEls = log.querySelectorAll<HTMLElement>(".bottom-chat-who[data-account]");
+    whoEls.forEach((el) => {
+      const acc = el.getAttribute("data-account")!;
+      if (acc.startsWith("0x")) el.textContent = displayName(acc);
+      else el.textContent = acc;
+    });
+  };
+  globalProfileStore.addEventListener("update", onProfileUpdate);
+
+  // -----------------------------
+  // send handlers
+  // -----------------------------
   async function sendCurrent() {
     const text = input.value.trim();
     if (!text) return;
@@ -99,12 +139,21 @@ export function createBottomChat(service: WorldService): BottomChatUI {
   sendBtn.onclick = () => void sendCurrent();
 
   input.addEventListener("keydown", (ev) => {
+    // ✅ 조합 중 Enter는 전송 금지 (맥 한글 마지막 글자 쪼개짐 방지)
+    // - ev.isComposing: 크롬/엣지
+    // - keyCode 229: 일부 사파리/IME 케이스
+    const ime = (ev as any).isComposing || composing || (ev as any).keyCode === 229;
+
     if (ev.key === "Enter" && !ev.shiftKey) {
+      if (ime) return; // 조합 중이면 줄바꿈/전송 모두 막고, 조합 완료 후 Enter로 전송
       ev.preventDefault();
       void sendCurrent();
     }
   });
 
+  // -----------------------------
+  // world events (UI only)
+  // -----------------------------
   const ac = new AbortController();
   const sig = ac.signal;
 
@@ -113,7 +162,15 @@ export function createBottomChat(service: WorldService): BottomChatUI {
     (e: any) => {
       clearLog();
       const recent = (e.detail?.recentMessages ?? []) as any[];
-      for (const m of recent) appendMessage({ account: m.account ?? "-", text: m.text ?? "" });
+      const accounts = recent.map((m) => m.account).filter((a) => typeof a === "string" && a.startsWith("0x"));
+      if (accounts.length) void globalProfileStore.ensure(accounts as any);
+
+      for (const m of recent) {
+        appendMessage({
+          account: m.account ?? "-",
+          text: m.text ?? "",
+        });
+      }
     },
     { signal: sig } as any
   );
@@ -123,7 +180,10 @@ export function createBottomChat(service: WorldService): BottomChatUI {
     (e: any) => {
       const m = e.detail;
       if (!m) return;
-      appendMessage({ account: m.account ?? "-", text: m.text ?? "" });
+      appendMessage({
+        account: m.account ?? "-",
+        text: m.text ?? "",
+      });
     },
     { signal: sig } as any
   );
@@ -136,12 +196,14 @@ export function createBottomChat(service: WorldService): BottomChatUI {
     { signal: sig } as any
   );
 
+  // public api
   const setVisible = (visible: boolean) => {
     wrap.style.display = visible ? "flex" : "none";
   };
 
   const remove = () => {
     ac.abort();
+    globalProfileStore.removeEventListener("update", onProfileUpdate);
     wrap.remove();
   };
 

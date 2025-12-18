@@ -1,4 +1,4 @@
-import { AnimatedSpriteNode, GameObject, RectangleNode } from "kiwiengine";
+import { AnimatedSpriteNode, DomContainerNode, GameObject, RectangleNode } from "kiwiengine";
 import { defaultCharacterData, resolveCharacterAnimation } from "../services/character-data";
 import type { CharacterData } from "../types/character";
 import type { PlayerState } from "../types/world";
@@ -12,14 +12,46 @@ export abstract class Character extends GameObject {
   private lastDir: string | undefined;
   private lastAnim = "";
 
+  // UI
+  private nameEl: HTMLDivElement;
+  private bubbleEl: HTMLDivElement;
+  private bubbleHideTimer: number | null = null;
+
   constructor(opts?: { data?: CharacterData }) {
-    super({
-      layer: "world",
-      useYSort: true,
-    } as any);
+    super({ layer: "world", useYSort: true } as any);
 
     this.data = opts?.data ?? defaultCharacterData;
+
+    // ✅ 닉네임(아래)
+    this.nameEl = document.createElement("div");
+    this.nameEl.className = "name-tag";
+    this.nameEl.textContent = "";
+    const nameNode = new DomContainerNode(this.nameEl, { x: 0, y: 26, layer: "hud" } as any);
+    this.add(nameNode);
+
+    // ✅ 말풍선(위)
+    this.bubbleEl = document.createElement("div");
+    this.bubbleEl.className = "speech";
+    this.bubbleEl.style.display = "none";
+    const bubbleNode = new DomContainerNode(this.bubbleEl, { x: 0, y: -34, layer: "hud" } as any);
+    this.add(bubbleNode);
+
     this.#buildVisual();
+  }
+
+  setNickname(nicknameOrAddress: string) {
+    this.nameEl.textContent = nicknameOrAddress;
+  }
+
+  showSpeech(text: string, ms = 2200) {
+    this.bubbleEl.textContent = text;
+    this.bubbleEl.style.display = "block";
+
+    if (this.bubbleHideTimer) window.clearTimeout(this.bubbleHideTimer);
+    this.bubbleHideTimer = window.setTimeout(() => {
+      this.bubbleEl.style.display = "none";
+      this.bubbleHideTimer = null;
+    }, ms);
   }
 
   applyPlayerState(p: PlayerState) {
@@ -39,7 +71,6 @@ export abstract class Character extends GameObject {
   }
 
   #buildVisual() {
-    // spritesheet 있으면 사용, 없으면 fallback 도형
     const spriteType = (this.data as any).spriteType;
     const src = (this.data as any).src as string | undefined;
     const atlas = (this.data as any).atlas;
@@ -92,20 +123,12 @@ export abstract class Character extends GameObject {
     this.scaleX = flipX ? -1 : 1;
 
     if (!this.sprite) return;
-
     if (this.lastAnim === animation) return;
     this.lastAnim = animation;
 
-    // 다양한 엔진 구현 차이를 견디도록 "있으면 쓰고, 없으면 대입"
     const s: any = this.sprite;
-    if (typeof s.setAnimation === "function") {
-      s.setAnimation(animation, loop);
-      return;
-    }
-    if (typeof s.play === "function") {
-      s.play(animation, loop);
-      return;
-    }
+    if (typeof s.setAnimation === "function") return void s.setAnimation(animation, loop);
+    if (typeof s.play === "function") return void s.play(animation, loop);
     s.animation = animation;
     if ("loop" in s) s.loop = loop;
   }

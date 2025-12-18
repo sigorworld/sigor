@@ -19,9 +19,9 @@ export function mountGameRoot() {
   globalWorldService.start();
 
   rootEl = el("div.game-root") as HTMLElement;
+
   const worldEl = el("div.game-world") as HTMLElement;
 
-  // ✅ 캐릭터가 그려질 world 레이어를 반드시 추가
   renderer = new Renderer(worldEl, {
     layers: [
       { name: "world", drawOrder: 0 },
@@ -31,8 +31,8 @@ export function mountGameRoot() {
 
   renderer.add(globalWorld);
 
-  // 입력
-  input = new WorldInputController(globalWorldService, renderer);
+  // ✅ 여기 중요: worldEl 전달
+  input = new WorldInputController(globalWorldService, renderer, worldEl);
   input.attach();
 
   const topBar = createTopBar();
