@@ -8,6 +8,8 @@ import type {
   WorldWsServerMessage,
 } from "../types/world";
 
+import { globalProfileStore } from "../services/profile-store"; // ✅ 추가
+
 type TokenProvider = () => string | null;
 
 const MOVE_SEND_INTERVAL_MS = 60; // 서버로 move 보내는 최소 간격(ms)
@@ -60,6 +62,18 @@ export class WorldService extends EventTarget {
   // chat queue (WS open 전 전송한 메시지 보장)
   private pendingChat: WorldWsClientMessage[] = [];
 
+  // ✅ profile-updated 이벤트 핸들러(바인딩 유지)
+  private onProfileUpdatedEvent = (e: Event) => {
+    const ce = e as CustomEvent;
+    const account = ce?.detail?.account as EvmAddress | undefined;
+    if (!account) return;
+
+    // 로그인 상태에서만 전파
+    if (!tokenManager.getToken()) return;
+
+    this.sendProfileUpdated();
+  };
+
   constructor(opts?: { tokenProvider?: TokenProvider }) {
     super();
     this.loop = this.loop.bind(this);
@@ -73,10 +87,14 @@ export class WorldService extends EventTarget {
 
     tokenManager.on("signedIn", () => this.#syncAuth());
     tokenManager.on("signedOut", () => this.#syncAuth());
+
+    // ✅ 오버레이에서 dispatch한 이벤트를 받아서 서버로 알림
+    window.addEventListener("world:profile-updated", this.onProfileUpdatedEvent as any);
   }
 
   stop() {
     this.started = false;
+    window.removeEventListener("world:profile-updated", this.onProfileUpdatedEvent as any); // ✅
     this.disconnect();
   }
 
@@ -140,7 +158,7 @@ export class WorldService extends EventTarget {
 
   /** ✅ 채팅 전송: 로그인 유저만 */
   sendChat(text: string) {
-    if (!tokenManager.getToken()) return; // ✅ spectator면 무시(원하면 error 이벤트로 바꿔도 됨)
+    if (!tokenManager.getToken()) return;
 
     assertValidWorldChatText(text);
     const localId = (crypto as any).randomUUID?.() ?? String(Date.now());
@@ -154,13 +172,17 @@ export class WorldService extends EventTarget {
     this.#sendRaw(msg);
   }
 
+  /** ✅✅✅ 프로필 변경 전파(서버 → 전체 브로드캐스트 용) */
+  sendProfileUpdated() {
+    const s = this.socket;
+    if (!s || s.readyState !== WebSocket.OPEN) return;
+    this.#sendRaw({ type: "profile_updated" } as any);
+  }
+
   /* ---------------- internal ---------------- */
 
   #syncAuth() {
-    /**
-     * ✅ 핵심:
-     * - 로그인 여부와 관계없이 항상 connect해서 관전 가능
-     */
+    // ✅ 로그인 여부와 관계없이 항상 connect해서 관전 가능
     this.connect();
   }
 
@@ -189,7 +211,6 @@ export class WorldService extends EventTarget {
       this.reconnectDelayMs = 1200;
       this.dispatchEvent(new CustomEvent("connect"));
 
-      // ✅ 로그인 유저만 pending chat flush (spectator는 pendingChat 자체가 안 쌓임)
       if (tokenManager.getToken()) this.#flushPendingChat();
     });
 
@@ -204,8 +225,6 @@ export class WorldService extends EventTarget {
       this.dispatchEvent(new CustomEvent("disconnect"));
 
       if (!this.desiredConnected) return;
-
-      // ✅ token이 없어도 spectator로 재연결 시도
       this.#scheduleReconnect();
     });
 
@@ -235,7 +254,6 @@ export class WorldService extends EventTarget {
     if (!msg || typeof (msg as any).type !== "string") return;
 
     if (msg.type === "hello") {
-      // ✅ spectator면 null 가능
       this.me = ((msg as any).account ?? null) as any;
       this.dispatchEvent(new CustomEvent("hello", { detail: msg }));
       return;
@@ -297,11 +315,18 @@ export class WorldService extends EventTarget {
       };
 
       const prev = this.serverTargets.get(account);
-      // ✅ out-of-order 방지
       if (!prev || (prev.updatedAt ?? 0) <= (next.updatedAt ?? 0)) {
         this.serverTargets.set(account, next);
         if (!this.players.has(account)) this.players.set(account, { ...next });
       }
+      return;
+    }
+
+    // ✅✅✅ 핵심: 누가 프로필을 바꿨다는 서버 신호를 받으면
+    // 해당 account만 force refresh → 월드에서 update 이벤트로 appearance 적용됨
+    if ((msg as any).type === "profile_updated") {
+      const account = (msg as any).account as EvmAddress;
+      void globalProfileStore.ensure([account] as any, { force: true });
       return;
     }
 
@@ -394,7 +419,6 @@ export class WorldService extends EventTarget {
             const ratio = Math.max(AUTO_MIN_SPEED_RATIO, slowT);
             speed = LOCAL_MOVE_SPEED * ratio;
 
-            // ✅ 이번 프레임 이동량이 목표 거리보다 크면 목표에 딱 붙이고 종료
             const step = speed * dt;
             if (step >= dist) {
               const dir =
@@ -413,8 +437,6 @@ export class WorldService extends EventTarget {
                 this.lastMoveSentAt = now;
                 this.#sendRaw({ type: "move", x: tx, y: ty, dir } as any);
               }
-
-              // 다음 프레임으로
             }
           }
         }
@@ -425,12 +447,8 @@ export class WorldService extends EventTarget {
 
           const dir =
             Math.abs(mdx) > Math.abs(mdy)
-              ? mdx > 0
-                ? "right"
-                : "left"
-              : mdy > 0
-                ? "down"
-                : "up";
+              ? mdx > 0 ? "right" : "left"
+              : mdy > 0 ? "down" : "up";
 
           const updatedAt = Date.now();
           const next: PlayerState = { account: this.me, x: nx, y: ny, dir, updatedAt };

@@ -15,19 +15,19 @@ export interface PlayerState {
   updatedAt: number;
 }
 
-/** Client -> Server */
 export type WorldWsClientMessage =
-  | { type: 'ping' }
-  | { type: 'chat'; text: string; localId?: string }
-  | { type: 'move'; x: number; y: number; dir?: string };
+  | { type: "ping" }
+  | { type: "chat"; text: string; localId?: string }
+  | { type: "move"; x: number; y: number; dir?: string }
+  | { type: "profile_updated" }; // ✅
 
-/** Server -> Client */
 export type WorldWsServerMessage =
-  | { type: 'hello'; account: EvmAddress }
-  | { type: 'init'; me: EvmAddress; recentMessages: ChatRow[]; players: PlayerState[] }
-  | { type: 'chat'; message: ChatRow; localId?: string }
-  | { type: 'player_joined'; player: PlayerState }
-  | { type: 'player_left'; account: EvmAddress }
-  | { type: 'player_moved'; account: EvmAddress; x: number; y: number; dir?: string; updatedAt: number }
-  | { type: 'error'; message: string }
-  | { type: 'pong' };
+  | { type: "hello"; account: EvmAddress | null } // ✅ null 허용 (당신 서버가 null 보냄)
+  | { type: "init"; me: EvmAddress | null; recentMessages: ChatRow[]; players: PlayerState[] } // ✅
+  | { type: "chat"; message: ChatRow; localId?: string }
+  | { type: "player_joined"; player: PlayerState }
+  | { type: "player_left"; account: EvmAddress }
+  | { type: "player_moved"; account: EvmAddress; x: number; y: number; dir?: string; updatedAt: number }
+  | { type: "profile_updated"; account: EvmAddress } // ✅
+  | { type: "error"; message: string }
+  | { type: "pong" };
