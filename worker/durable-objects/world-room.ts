@@ -38,16 +38,6 @@ function dist2(ax: number, ay: number, bx: number, by: number) {
   return dx * dx + dy * dy;
 }
 
-/**
- * ✅ 타입이 원래 `EvmAddress`만 허용하는 경우가 많아서
- * hello.account / init.me 를 null로 보내기 위해 로컬에서 확장 타입을 사용합니다.
- * 가능하면 ../types에서도 nullable로 바꾸는 걸 추천(맨 아래 참고).
- */
-type WsServerToClientNullable =
-  | (WsServerToClient & { type: "hello"; account: EvmAddress | null })
-  | (WsServerToClient & { type: "init"; me: EvmAddress | null })
-  | WsServerToClient;
-
 export class WorldRoomDO {
   private readonly env: Env;
 
@@ -80,9 +70,8 @@ export class WorldRoomDO {
 
   private async handleWebSocketUpgrade(request: Request, url: URL): Promise<Response> {
     /**
-     * ✅ 변경점:
-     * - token이 없거나 invalid여도 401로 막지 않고 spectator로 accept
-     * - token이 valid면 로그인 플레이어
+     * ✅ token이 없거나 invalid여도 spectator로 accept
+     * ✅ token이 valid면 로그인 플레이어
      */
     const token = url.searchParams.get("token");
 
@@ -91,11 +80,7 @@ export class WorldRoomDO {
     if (token) {
       try {
         const payload: any = await verifyToken(token, this.env as any);
-        if (isValidEvmAddress(payload?.sub)) {
-          account = payload.sub as EvmAddress;
-        } else {
-          account = undefined;
-        }
+        if (isValidEvmAddress(payload?.sub)) account = payload.sub as EvmAddress;
       } catch {
         account = undefined;
       }
@@ -116,7 +101,7 @@ export class WorldRoomDO {
     }
 
     // hello + init (me/account는 spectator면 null)
-    server.send(JSON.stringify({ type: "hello", account: account ?? null }));
+    server.send(JSON.stringify({ type: "hello", account: account ?? null } satisfies WsServerToClient));
 
     const recent = await this.loadRecentMessages(MAX_INIT_MESSAGES);
     const players = Array.from(this.players.values());
@@ -127,7 +112,7 @@ export class WorldRoomDO {
         me: account ?? null,
         recentMessages: recent,
         players,
-      }),
+      } satisfies WsServerToClient),
     );
 
     server.addEventListener("message", (evt) => {
@@ -206,11 +191,13 @@ export class WorldRoomDO {
     }
 
     /**
-     * ✅ spectator(비로그인)는 읽기 전용:
-     * - move/chat 무시 (원하면 error 보내도 됨)
+     * ✅ spectator(비로그인)는 읽기 전용
      */
-    if (!account) {
-      // socket.send(JSON.stringify({ type: "error", message: "Unauthorized" } satisfies WsServerToClient));
+    if (!account) return;
+
+    // (선택) 프로필 갱신 브로드캐스트
+    if (msg.type === "profile_updated") {
+      this.broadcast({ type: "profile_updated", account } as any);
       return;
     }
 
@@ -233,11 +220,10 @@ export class WorldRoomDO {
         return;
       }
 
-      // 메모리 업데이트만
       const updatedAt = Date.now();
       const prev = this.players.get(account);
 
-      // 접속 상태가 꼬였을 때를 대비해 없으면 스폰부터
+      // 접속 상태 꼬임 대비: 없으면 스폰부터
       if (!prev) {
         const spawned = this.allocateSpawn(account);
         this.players.set(account, spawned);

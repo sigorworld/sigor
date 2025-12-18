@@ -6,6 +6,7 @@ export type HeldNft = {
   collection: string;
   id: number;
   holder: string;
+  name?: string;
   type?: string | null;
   gender?: string | null;
   parts?: string | null; // JSON string일 수 있음

@@ -1,4 +1,4 @@
-import type { CharacterData, SpritesheetCharacterData } from "../types/character";
+import type { AnimationConfig, AnimationEntry, CharacterData, SpritesheetCharacterData } from "../types/character";
 import { buildAtlas } from "../utils/atlas";
 
 export type Dir4 = "up" | "down" | "left" | "right";
@@ -177,86 +177,115 @@ export function getCharacterData(app: {
 
 export function resolveCharacterAnimation(params: {
   actions: {
-    frontIdle?: string;
-    frontWalk?: string;
-    leftIdle?: string;
-    leftWalk?: string;
-    rightIdle?: string;
-    rightWalk?: string;
-    backIdle?: string;
-    backWalk?: string;
+    frontIdle?: AnimationEntry | AnimationEntry[];
+    frontWalk?: AnimationEntry | AnimationEntry[];
+    leftIdle?: AnimationEntry | AnimationEntry[];
+    leftWalk?: AnimationEntry | AnimationEntry[];
+    rightIdle?: AnimationEntry | AnimationEntry[];
+    rightWalk?: AnimationEntry | AnimationEntry[];
+    backIdle?: AnimationEntry | AnimationEntry[];
+    backWalk?: AnimationEntry | AnimationEntry[];
   };
   dir?: string;
   moving: boolean;
-}): { animation: string; loop: boolean; flipX: boolean } {
+}): { animation: string; loop: boolean; flipX: boolean; pivotX?: number; pivotY?: number } {
   const { actions, dir = "down", moving } = params;
 
-  const pick = (idle?: string, walk?: string) => ({
-    animation: moving ? (walk ?? idle) : (idle ?? walk),
-    loop: moving,
-  });
+  const toList = (entry?: AnimationEntry | AnimationEntry[]): AnimationEntry[] => {
+    if (!entry) return [];
+    return Array.isArray(entry) ? entry : [entry];
+  };
 
-  const hasLeft = !!(actions.leftIdle || actions.leftWalk);
-  const hasRight = !!(actions.rightIdle || actions.rightWalk);
-  const hasFront = !!(actions.frontIdle || actions.frontWalk);
-  const hasBack = !!(actions.backIdle || actions.backWalk);
+  const pickOne = (list: AnimationEntry[]): AnimationEntry | undefined => {
+    if (list.length === 0) return undefined;
+    if (list.length === 1) return list[0];
+    return list[Math.floor(Math.random() * list.length)];
+    // 항상 첫 번째를 쓰고 싶으면 위 줄 대신: return list[0];
+  };
+
+  const toConfig = (entry: AnimationEntry): AnimationConfig =>
+    typeof entry === "string" ? { name: entry } : entry;
+
+  const pick = (
+    idle?: AnimationEntry | AnimationEntry[],
+    walk?: AnimationEntry | AnimationEntry[]
+  ): { animation: string; loop: boolean; pivotX?: number; pivotY?: number } => {
+    const idleList = toList(idle);
+    const walkList = toList(walk);
+
+    const chosenEntry = moving
+      ? (pickOne(walkList) ?? pickOne(idleList))
+      : (pickOne(idleList) ?? pickOne(walkList));
+
+    if (!chosenEntry) return { animation: "", loop: false };
+
+    const cfg = toConfig(chosenEntry);
+    return {
+      animation: cfg.name,
+      loop: moving, // 기존 동작 유지 (walk가 없어 idle을 쓰더라도 moving이면 loop=true)
+      pivotX: cfg.pivotX,
+      pivotY: cfg.pivotY,
+    };
+  };
+
+  const hasLeft = toList(actions.leftIdle).length > 0 || toList(actions.leftWalk).length > 0;
+  const hasRight = toList(actions.rightIdle).length > 0 || toList(actions.rightWalk).length > 0;
+  const hasFront = toList(actions.frontIdle).length > 0 || toList(actions.frontWalk).length > 0;
+  const hasBack = toList(actions.backIdle).length > 0 || toList(actions.backWalk).length > 0;
 
   // 방향별 우선순위 + 미러링 규칙
   if (dir === "left") {
     if (hasLeft) {
-      const { animation, loop } = pick(actions.leftIdle, actions.leftWalk);
-      return { animation: animation!, loop, flipX: false };
+      const r = pick(actions.leftIdle, actions.leftWalk);
+      return { ...r, flipX: false };
     }
     if (hasRight) {
-      const { animation, loop } = pick(actions.rightIdle, actions.rightWalk);
-      return { animation: animation!, loop, flipX: true }; // right를 flip해서 left
+      const r = pick(actions.rightIdle, actions.rightWalk);
+      return { ...r, flipX: true }; // right를 flip해서 left
     }
   }
 
   if (dir === "right") {
     if (hasRight) {
-      const { animation, loop } = pick(actions.rightIdle, actions.rightWalk);
-      return { animation: animation!, loop, flipX: false };
+      const r = pick(actions.rightIdle, actions.rightWalk);
+      return { ...r, flipX: false };
     }
     if (hasLeft) {
-      const { animation, loop } = pick(actions.leftIdle, actions.leftWalk);
-      return { animation: animation!, loop, flipX: true }; // left를 flip해서 right
+      const r = pick(actions.leftIdle, actions.leftWalk);
+      return { ...r, flipX: true }; // left를 flip해서 right
     }
   }
 
   if (dir === "up") {
     if (hasBack) {
-      const { animation, loop } = pick(actions.backIdle, actions.backWalk);
-      return { animation: animation!, loop, flipX: false };
+      const r = pick(actions.backIdle, actions.backWalk);
+      return { ...r, flipX: false };
     }
-    // back 없으면 front로 대체
     if (hasFront) {
-      const { animation, loop } = pick(actions.frontIdle, actions.frontWalk);
-      return { animation: animation!, loop, flipX: false };
+      const r = pick(actions.frontIdle, actions.frontWalk);
+      return { ...r, flipX: false };
     }
   }
 
   // down (default)
   if (hasFront) {
-    const { animation, loop } = pick(actions.frontIdle, actions.frontWalk);
-    return { animation: animation!, loop, flipX: false };
+    const r = pick(actions.frontIdle, actions.frontWalk);
+    return { ...r, flipX: false };
   }
-  // front 없으면 back으로 대체
   if (hasBack) {
-    const { animation, loop } = pick(actions.backIdle, actions.backWalk);
-    return { animation: animation!, loop, flipX: false };
+    const r = pick(actions.backIdle, actions.backWalk);
+    return { ...r, flipX: false };
   }
 
-  // 최후의 수단: 좌/우 아무거나 있으면 그걸로
+  // 최후의 수단
   if (hasRight) {
-    const { animation, loop } = pick(actions.rightIdle, actions.rightWalk);
-    return { animation: animation!, loop, flipX: false };
+    const r = pick(actions.rightIdle, actions.rightWalk);
+    return { ...r, flipX: false };
   }
   if (hasLeft) {
-    const { animation, loop } = pick(actions.leftIdle, actions.leftWalk);
-    return { animation: animation!, loop, flipX: false };
+    const r = pick(actions.leftIdle, actions.leftWalk);
+    return { ...r, flipX: false };
   }
 
-  // 정말 아무것도 없으면 (타입상 string을 반환해야 해서) 빈 문자열
   return { animation: "", loop: false, flipX: false };
 }

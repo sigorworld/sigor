@@ -10,6 +10,10 @@ import { googleLogout } from "../auth/google-login";
 import "./auth-overlays.css";
 import "./profile-setup-overlay.css";
 
+import { DomAnimatedSpriteNode } from "kiwiengine";
+import { getCharacterData, resolveCharacterAnimation } from "../services/character-data";
+import { globalProfileStore } from "../services/profile-store"; // ✅ 추가
+
 let currentProfileOverlay: HTMLElement | null = null;
 
 function removeProfileOverlay() {
@@ -195,7 +199,7 @@ function createProfileSetupOverlay(opts: {
   );
   const nftHint = el(
     "div.auth-overlay-hint",
-    "※ 아래 목록은 '메인 캐릭터로 사용 가능한 NFT 컨트랙트'만 표시됩니다."
+    "※ 보유한 NFT들 중에 캐릭터로 사용 가능한 것들"
   );
 
   const grid = el("div.profile-grid");
@@ -215,8 +219,8 @@ function createProfileSetupOverlay(opts: {
 
   logoutBtn.onclick = async () => {
     await logout().catch(() => { });
-    await googleLogout().catch(() => { }); // 이미 해제된 경우 무시
-    location.href = '/'
+    await googleLogout().catch(() => { });
+    location.href = "/";
   };
 
   function syncSaveEnabled() {
@@ -224,7 +228,6 @@ function createProfileSetupOverlay(opts: {
     const bb = bioTextarea.value.trim();
     const hasPrimary = !!selected?.contract && !!selected?.tokenId;
 
-    // 닉네임/바이오는 선택이지만, primary는 필수
     saveBtn.disabled = !hasPrimary || nn.length > 30 || bb.length > 200;
   }
 
@@ -235,9 +238,9 @@ function createProfileSetupOverlay(opts: {
   }
 
   function renderNftCard(n: HeldNft) {
-    const contract = n.contract_addr ? getAddress(n.contract_addr) : null;
+    const contract = n.contract_addr ? getAddress(n.contract_addr) : '';
     const tokenId = String(n.id ?? "");
-    const name = n.type ? `${n.type} #${tokenId}` : `NFT #${tokenId}`;
+    const name = n.name ?? (n.type ? `${n.type} #${tokenId}` : `NFT #${tokenId}`);
     const imgUrl = toImageUrl(n.image);
 
     const cardEl = el("div.profile-nft", {
@@ -245,7 +248,6 @@ function createProfileSetupOverlay(opts: {
       onclick: () => {
         if (!contract) return;
 
-        // 방어 로직(목록에서 이미 필터링했지만 혹시 몰라서)
         if (!isAllowedPrimaryContract(contract)) {
           showErrorAlert("선택 불가", "이 NFT는 메인 캐릭터로 사용할 수 없습니다.");
           return;
@@ -262,12 +264,37 @@ function createProfileSetupOverlay(opts: {
       cardEl.setAttribute("data-selected", "1");
     }
 
-    const img = el("img", { src: imgUrl, alt: name }) as HTMLImageElement;
-    img.onerror = () => {
-      img.style.display = "none";
-    };
+    const data = getCharacterData({
+      nftAddress: contract,
+      tokenId: parseInt(tokenId),
+      parts: n.parts,
+      image: imgUrl,
+    });
 
-    cardEl.append(img, el("div.meta", name));
+    const previewContainer = el("div.preview-container");
+
+    if (data.spriteType === "spritesheet" && data.src && data.atlas && data.actions) {
+      const initial = resolveCharacterAnimation({
+        actions: data.actions,
+        dir: "down",
+        moving: false,
+      });
+
+      const node = new DomAnimatedSpriteNode({
+        src: data.src,
+        atlas: data.atlas,
+        animation: initial.animation,
+        scale: data.scale,
+        pivotX: data.pivotX,
+        pivotY: data.pivotY,
+        y: 20
+      });
+
+      node.attachTo(previewContainer)
+    }
+
+    cardEl.append(previewContainer, el("div.meta", name));
+
     return cardEl;
   }
 
@@ -309,7 +336,6 @@ function createProfileSetupOverlay(opts: {
     grid.append(box);
   }
 
-  // 입력 이벤트
   nicknameInput.addEventListener("input", syncSaveEnabled);
   bioTextarea.addEventListener("input", syncSaveEnabled);
 
@@ -325,7 +351,6 @@ function createProfileSetupOverlay(opts: {
         return;
       }
 
-      // 저장 직전에도 허용 컨트랙트 검증
       if (!isAllowedPrimaryContract(selected.contract)) {
         showErrorAlert("선택 불가", "선택한 NFT는 메인 캐릭터로 사용할 수 없습니다.");
         return;
@@ -346,6 +371,15 @@ function createProfileSetupOverlay(opts: {
         },
         "프로필 저장 중..."
       );
+
+      // ✅✅✅ 여기부터가 “월드에 즉시 반영” 핵심
+      // 1) 내 주소 프로필/메인NFT를 강제 리프레시 → ProfileStore update 이벤트 → 월드 캐릭터 갱신
+      await globalProfileStore.ensure([address as any], { force: true });
+
+      // 2) (선택) 다른 유저에게도 갱신 전파를 하고 싶으면
+      //    WS 레이어에서 이 이벤트를 듣고 {type:"profile_updated"}를 서버로 보내게 만들 수 있음
+      window.dispatchEvent(new CustomEvent("world:profile-updated", { detail: { account: address } }));
+      // ✅✅✅ 여기까지
 
       onDone();
     } catch (err) {
@@ -417,7 +451,6 @@ function createProfileSetupOverlay(opts: {
   card.append(title, desc, body);
   backdrop.append(card);
 
-  // 초기 상태
   syncSaveEnabled();
 
   return backdrop as HTMLElement;
