@@ -363,6 +363,8 @@ function createProfileSetupOverlay(opts: {
       const nftsAll = await fetchHeldNfts(address, {});
       const nfts = (nftsAll ?? []).filter((x) => isAllowedPrimaryContract(x.contract_addr ?? null));
 
+      console.log(nfts)
+
       grid.innerHTML = "";
 
       if (!nfts || nfts.length === 0) {

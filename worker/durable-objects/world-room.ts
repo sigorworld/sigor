@@ -4,7 +4,8 @@ import { isValidEvmAddress } from "../utils/evm";
 
 type Env = { DB: D1Database };
 
-type ClientInfo = { account: EvmAddress; socket: WebSocket };
+/** ✅ spectator는 account가 없을 수 있음 */
+type ClientInfo = { account?: EvmAddress; socket: WebSocket };
 
 const MAX_CHAT_LEN = 10_000;
 const MAX_INIT_MESSAGES = 50;
@@ -37,6 +38,16 @@ function dist2(ax: number, ay: number, bx: number, by: number) {
   return dx * dx + dy * dy;
 }
 
+/**
+ * ✅ 타입이 원래 `EvmAddress`만 허용하는 경우가 많아서
+ * hello.account / init.me 를 null로 보내기 위해 로컬에서 확장 타입을 사용합니다.
+ * 가능하면 ../types에서도 nullable로 바꾸는 걸 추천(맨 아래 참고).
+ */
+type WsServerToClientNullable =
+  | (WsServerToClient & { type: "hello"; account: EvmAddress | null })
+  | (WsServerToClient & { type: "init"; me: EvmAddress | null })
+  | WsServerToClient;
+
 export class WorldRoomDO {
   private readonly env: Env;
 
@@ -68,18 +79,26 @@ export class WorldRoomDO {
   }
 
   private async handleWebSocketUpgrade(request: Request, url: URL): Promise<Response> {
+    /**
+     * ✅ 변경점:
+     * - token이 없거나 invalid여도 401로 막지 않고 spectator로 accept
+     * - token이 valid면 로그인 플레이어
+     */
     const token = url.searchParams.get("token");
-    if (!token) return new Response("Missing token", { status: 401, headers: corsHeaders() });
 
-    let account: EvmAddress;
-    try {
-      const payload: any = await verifyToken(token, this.env as any);
-      if (!isValidEvmAddress(payload?.sub)) {
-        return new Response("Invalid token", { status: 401, headers: corsHeaders() });
+    let account: EvmAddress | undefined;
+
+    if (token) {
+      try {
+        const payload: any = await verifyToken(token, this.env as any);
+        if (isValidEvmAddress(payload?.sub)) {
+          account = payload.sub as EvmAddress;
+        } else {
+          account = undefined;
+        }
+      } catch {
+        account = undefined;
       }
-      account = payload.sub as EvmAddress;
-    } catch {
-      return new Response("Invalid or expired token", { status: 401, headers: corsHeaders() });
     }
 
     const pair = new WebSocketPair();
@@ -89,15 +108,15 @@ export class WorldRoomDO {
     server.accept();
     this.registerClient(server, account);
 
-    // ✅ 접속 시 스폰(이미 있으면 기존 유지)
-    if (!this.players.has(account)) {
+    // ✅ 로그인 유저만 스폰(이미 있으면 기존 유지)
+    if (account && !this.players.has(account)) {
       const spawned = this.allocateSpawn(account);
       this.players.set(account, spawned);
-      this.broadcast({ type: "player_joined", player: spawned });
+      this.broadcast({ type: "player_joined", player: spawned } as any);
     }
 
-    // hello + init
-    server.send(JSON.stringify({ type: "hello", account } satisfies WsServerToClient));
+    // hello + init (me/account는 spectator면 null)
+    server.send(JSON.stringify({ type: "hello", account: account ?? null }));
 
     const recent = await this.loadRecentMessages(MAX_INIT_MESSAGES);
     const players = Array.from(this.players.values());
@@ -105,10 +124,10 @@ export class WorldRoomDO {
     server.send(
       JSON.stringify({
         type: "init",
-        me: account,
+        me: account ?? null,
         recentMessages: recent,
         players,
-      } satisfies WsServerToClient),
+      }),
     );
 
     server.addEventListener("message", (evt) => {
@@ -141,28 +160,33 @@ export class WorldRoomDO {
     return { account, x, y, dir: "down", updatedAt: Date.now() };
   }
 
-  private registerClient(socket: WebSocket, account: EvmAddress) {
+  private registerClient(socket: WebSocket, account?: EvmAddress) {
     const client: ClientInfo = { account, socket };
     this.clients.push(client);
 
     socket.addEventListener("close", () => {
       this.clients = this.clients.filter((c) => c !== client);
 
+      // ✅ spectator는 player_left 처리 X
+      if (!account) return;
+
       // 동일 account 다중 접속 고려: 남은 소켓 없을 때만 제거
       const stillOnline = this.clients.some((c) => c.account === account);
       if (!stillOnline) {
         this.players.delete(account);
-        this.broadcast({ type: "player_left", account });
+        this.broadcast({ type: "player_left", account } as any);
       }
     });
 
     socket.addEventListener("error", () => {
       this.clients = this.clients.filter((c) => c !== client);
-      try { socket.close(); } catch { }
+      try {
+        socket.close();
+      } catch { }
     });
   }
 
-  private async onClientMessage(account: EvmAddress, socket: WebSocket, data: any) {
+  private async onClientMessage(account: EvmAddress | undefined, socket: WebSocket, data: any) {
     let msg: WsClientToServer | null = null;
     try {
       msg = typeof data === "string" ? JSON.parse(data) : null;
@@ -181,6 +205,15 @@ export class WorldRoomDO {
       return;
     }
 
+    /**
+     * ✅ spectator(비로그인)는 읽기 전용:
+     * - move/chat 무시 (원하면 error 보내도 됨)
+     */
+    if (!account) {
+      // socket.send(JSON.stringify({ type: "error", message: "Unauthorized" } satisfies WsServerToClient));
+      return;
+    }
+
     if (msg.type === "chat") {
       const text = (msg.text ?? "").toString().trim();
       if (!text) return;
@@ -190,7 +223,7 @@ export class WorldRoomDO {
       }
 
       const row = await this.saveChatMessage(account, text);
-      this.broadcast({ type: "chat", message: row, localId: msg.localId });
+      this.broadcast({ type: "chat", message: row, localId: msg.localId } as any);
       return;
     }
 
@@ -208,7 +241,7 @@ export class WorldRoomDO {
       if (!prev) {
         const spawned = this.allocateSpawn(account);
         this.players.set(account, spawned);
-        this.broadcast({ type: "player_joined", player: spawned });
+        this.broadcast({ type: "player_joined", player: spawned } as any);
       }
 
       this.players.set(account, {
@@ -226,7 +259,7 @@ export class WorldRoomDO {
         y: msg.y,
         dir: msg.dir,
         updatedAt,
-      });
+      } as any);
 
       return;
     }
@@ -241,12 +274,18 @@ export class WorldRoomDO {
       try {
         c.socket.send(json);
       } catch {
-        try { c.socket.close(); } catch { }
+        try {
+          c.socket.close();
+        } catch { }
       }
     }
     // 죽은 소켓 정리
     this.clients = this.clients.filter((c) => {
-      try { return c.socket.readyState === WebSocket.OPEN; } catch { return false; }
+      try {
+        return c.socket.readyState === WebSocket.OPEN;
+      } catch {
+        return false;
+      }
     });
   }
 
@@ -258,7 +297,9 @@ export class WorldRoomDO {
     const result = await this.env.DB.prepare(`
       INSERT INTO chat_messages (account, text, timestamp)
       VALUES (?, ?, ?)
-    `).bind(account, text, timestamp).run();
+    `)
+      .bind(account, text, timestamp)
+      .run();
 
     return {
       id: Number(result.meta.last_row_id),
@@ -274,7 +315,9 @@ export class WorldRoomDO {
       FROM chat_messages
       ORDER BY id DESC
       LIMIT ?
-    `).bind(limit).all<{ id: number; account: string; text: string; timestamp: number }>();
+    `)
+      .bind(limit)
+      .all<{ id: number; account: string; text: string; timestamp: number }>();
 
     return results.reverse().map((r) => ({
       id: r.id,

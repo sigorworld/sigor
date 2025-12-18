@@ -131,6 +131,7 @@ export abstract class Character extends GameObject {
         loop: initial.loop,
         layer: "world",
         scale: this.data.scale,
+        pivotX: this.data.pivotX,
         pivotY: this.data.pivotY,
       } as any);
 

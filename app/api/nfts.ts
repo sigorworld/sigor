@@ -86,3 +86,49 @@ export async function fetchNftsByIds(params: {
   const items: HeldNft[] = await res.json();
   return items;
 }
+
+export type NftRow = {
+  nft_address: string;
+  token_id: number;
+  holder: string;
+  style?: string;
+  parts?: string;
+  dialogue?: string;
+  image?: string;
+};
+
+const ADDR_TO_COLLECTION: Record<string, string> = {
+  "0xE47E90C58F8336A2f24Bcd9bCB530e2e02E1E8ae": "dogesoundclub-mates",
+  "0x2B303fd0082E4B51e5A6C602F45545204bbbB4DC": "dogesoundclub-e-mates",
+  "0xDeDd727ab86bce5D416F9163B2448860BbDE86d4": "dogesoundclub-biased-mates",
+  "0x81b5C41Bac33ea696D9684D9aFdB6cd9f6Ee5CFF": "kingcrowndao-pixel-kongz",
+  "0xF967431fb8F5B4767567854dE5448D2EdC21a482": "kingcrowndao-kongz",
+  "0x7340a44AbD05280591377345d21792Cdc916A388": "sigor-sparrows",
+  "0x455Ee7dD1fc5722A7882aD6B7B8c075655B8005B": "sigor-housedeeds",
+  "0x595b299Db9d83279d20aC37A85D36489987d7660": "babyping",
+};
+
+export async function fetchNftRowByContractToken(params: {
+  nft_address: `0x${string}`;
+  token_id: number;
+}): Promise<NftRow | null> {
+  const contract = ADDR_TO_COLLECTION[getAddress(params.nft_address)];
+  const tokenId = Number(params.token_id);
+
+  if (!Number.isFinite(tokenId) || tokenId < 0) return null;
+
+  const res = await fetch(`${NFT_API_BASE_URI}/nft/${contract}/${tokenId}`);
+  const text = await res.text();
+
+  if (!res.ok) {
+    if (res.status === 404) return null;
+    throw new Error(`NFT 조회 실패 (status: ${res.status})\n${text}`);
+  }
+
+  try {
+    const json = JSON.parse(text);
+    return json as NftRow;
+  } catch (e) {
+    throw new Error(`NFT 응답 파싱 오류: ${(e as Error).message}`);
+  }
+}

@@ -10,10 +10,12 @@ export type AnimationEntry = string | AnimationConfig
 
 type BaseCharacterData = {
   actions: {
-    sideIdle: AnimationEntry | AnimationEntry[]
-    sideWalk: AnimationEntry | AnimationEntry[]
     frontIdle?: AnimationEntry | AnimationEntry[]
     frontWalk?: AnimationEntry | AnimationEntry[]
+    leftIdle?: AnimationEntry | AnimationEntry[]
+    leftWalk?: AnimationEntry | AnimationEntry[]
+    rightIdle?: AnimationEntry | AnimationEntry[]
+    rightWalk?: AnimationEntry | AnimationEntry[]
     backIdle?: AnimationEntry | AnimationEntry[]
     backWalk?: AnimationEntry | AnimationEntry[]
   }

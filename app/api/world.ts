@@ -47,11 +47,12 @@ export async function fetchWorldChatMessages(params?: { limit?: number; cursor?:
   return (await res.json()) as { messages: ChatRow[]; nextCursor: number | null };
 }
 
-export function buildWorldWsUrl(token: string): string {
+/** ✅ token 없어도 관전용으로 WS 접속 가능하도록 변경 */
+export function buildWorldWsUrl(token?: string): string {
   const base = apiBase();
   base.protocol = base.protocol === "https:" ? "wss:" : "ws:";
 
   const wsUrl = new URL("world/ws", base);
-  wsUrl.searchParams.set("token", token);
+  if (token) wsUrl.searchParams.set("token", token); // ✅ optional
   return wsUrl.toString();
 }

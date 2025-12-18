@@ -44,7 +44,7 @@ export class WorldService extends EventTarget {
 
   // ✅ render state (UI가 구독하는 맵)
   public players = new Map<EvmAddress, PlayerState>();
-  public me: EvmAddress | null = null;
+  public me: EvmAddress | null = null; // ✅ spectator면 null
 
   // ✅ server targets (원격 보간용)
   private serverTargets = new Map<EvmAddress, PlayerState>();
@@ -87,13 +87,9 @@ export class WorldService extends EventTarget {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) return;
     if (this.connecting) return;
 
-    const token = tokenManager.getToken();
-    if (!token) {
-      this.dispatchEvent(new CustomEvent("error", { detail: new Error("No token") }));
-      return;
-    }
-
-    this.#connectWS(token);
+    // ✅ token 없어도 spectator로 연결
+    const token = tokenManager.getToken(); // string | null
+    this.#connectWS(token ?? undefined);
   }
 
   disconnect() {
@@ -135,15 +131,17 @@ export class WorldService extends EventTarget {
     }
   }
 
-  /** ✅ 화면 클릭/탭 이동: 목표 좌표로 자연스럽게 걸어가게 함 */
+  /** ✅ 화면 클릭/탭 이동: 로그인 유저만 */
   setMoveTarget(x: number, y: number) {
     if (!this.me) return;
     this.autoTarget = { x, y };
     this.#ensureLoop();
   }
 
-  /** 채팅 전송(연결 전이면 큐에 쌓았다가 open 후 flush) */
+  /** ✅ 채팅 전송: 로그인 유저만 */
   sendChat(text: string) {
+    if (!tokenManager.getToken()) return; // ✅ spectator면 무시(원하면 error 이벤트로 바꿔도 됨)
+
     assertValidWorldChatText(text);
     const localId = (crypto as any).randomUUID?.() ?? String(Date.now());
     const msg: WorldWsClientMessage = { type: "chat", text, localId } as any;
@@ -159,12 +157,14 @@ export class WorldService extends EventTarget {
   /* ---------------- internal ---------------- */
 
   #syncAuth() {
-    const has = !!tokenManager.getToken();
-    if (has) this.connect();
-    else this.disconnect();
+    /**
+     * ✅ 핵심:
+     * - 로그인 여부와 관계없이 항상 connect해서 관전 가능
+     */
+    this.connect();
   }
 
-  #connectWS(token: string) {
+  #connectWS(token?: string) {
     if (!this.desiredConnected) return;
 
     this.connecting = true;
@@ -188,7 +188,9 @@ export class WorldService extends EventTarget {
       this.connecting = false;
       this.reconnectDelayMs = 1200;
       this.dispatchEvent(new CustomEvent("connect"));
-      this.#flushPendingChat();
+
+      // ✅ 로그인 유저만 pending chat flush (spectator는 pendingChat 자체가 안 쌓임)
+      if (tokenManager.getToken()) this.#flushPendingChat();
     });
 
     socket.addEventListener("message", (ev: MessageEvent) => {
@@ -202,8 +204,8 @@ export class WorldService extends EventTarget {
       this.dispatchEvent(new CustomEvent("disconnect"));
 
       if (!this.desiredConnected) return;
-      if (!tokenManager.getToken()) return;
 
+      // ✅ token이 없어도 spectator로 재연결 시도
       this.#scheduleReconnect();
     });
 
@@ -233,13 +235,14 @@ export class WorldService extends EventTarget {
     if (!msg || typeof (msg as any).type !== "string") return;
 
     if (msg.type === "hello") {
-      this.me = (msg as any).account;
+      // ✅ spectator면 null 가능
+      this.me = ((msg as any).account ?? null) as any;
       this.dispatchEvent(new CustomEvent("hello", { detail: msg }));
       return;
     }
 
     if (msg.type === "init") {
-      this.me = (msg as any).me;
+      this.me = ((msg as any).me ?? null) as any;
 
       this.players.clear();
       this.serverTargets.clear();
@@ -326,12 +329,11 @@ export class WorldService extends EventTarget {
     this.reconnectTimer = window.setTimeout(() => {
       this.reconnectDelayMs = Math.min(Math.floor(this.reconnectDelayMs * 1.6), 15000);
 
-      const token = tokenManager.getToken();
-      if (!token) return;
       if (this.socket && this.socket.readyState === WebSocket.OPEN) return;
       if (this.connecting) return;
 
-      this.#connectWS(token);
+      const token = tokenManager.getToken();
+      this.#connectWS(token ?? undefined);
     }, delay);
   }
 
@@ -364,7 +366,7 @@ export class WorldService extends EventTarget {
     const dt = Math.min(0.05, Math.max(0, (now - this.lastFrameAt) / 1000));
     this.lastFrameAt = now;
 
-    // ---- 내 이동 (수동 input 우선, 없으면 autoTarget) ----
+    // ---- 내 이동 (로그인 유저만) ----
     if (this.me) {
       const cur = this.players.get(this.me);
       if (cur) {
@@ -407,13 +409,12 @@ export class WorldService extends EventTarget {
               this.serverTargets.set(this.me!, next);
               this.autoTarget = null;
 
-              // move 전송(마지막 한 번)
               if (now - this.lastMoveSentAt >= MOVE_SEND_INTERVAL_MS) {
                 this.lastMoveSentAt = now;
                 this.#sendRaw({ type: "move", x: tx, y: ty, dir } as any);
               }
 
-              // 여기서 끝내면 아래 이동 로직이 중복 수행될 수 있으니 return하거나 플래그로 스킵하세요.
+              // 다음 프레임으로
             }
           }
         }
@@ -447,7 +448,7 @@ export class WorldService extends EventTarget {
       }
     }
 
-    // ---- 원격 보간 ----
+    // ---- 원격 보간 (관전자도 수행) ----
     let changed = false;
     for (const [account, target] of this.serverTargets.entries()) {
       if (this.me && account === this.me) continue;
