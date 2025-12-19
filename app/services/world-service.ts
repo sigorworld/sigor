@@ -8,7 +8,7 @@ import type {
   WorldWsServerMessage,
 } from "../types/world";
 
-import { globalProfileStore } from "../services/profile-store"; // ✅ 추가
+import { globalProfileStore } from "../services/profile-store";
 
 type TokenProvider = () => string | null;
 
@@ -16,7 +16,7 @@ const MOVE_SEND_INTERVAL_MS = 60; // 서버로 move 보내는 최소 간격(ms)
 const LOCAL_MOVE_SPEED = 200;     // units/sec
 const REMOTE_SMOOTH = 14;         // 값이 클수록 타겟에 빨리 붙음(원격 보간)
 
-// ✅ 클릭/탭 이동 튜닝
+// 클릭/탭 이동 튜닝
 const AUTO_STOP_DISTANCE = 0.12;   // 이 거리 이내면 도착 처리 (world unit)
 const AUTO_SLOW_RADIUS = 0.9;      // 이 거리 이내에선 감속 시작
 const AUTO_MIN_SPEED_RATIO = 0.18; // 감속 시 최소 속도 비율(너무 기어가지 않게)
@@ -44,11 +44,17 @@ export class WorldService extends EventTarget {
   private runningLoop = false;
   private lastFrameAt = 0;
 
-  // ✅ render state (UI가 구독하는 맵)
-  public players = new Map<EvmAddress, PlayerState>();
-  public me: EvmAddress | null = null; // ✅ spectator면 null
+  // ✅ 현재 소켓이 "어떤 토큰"으로 연결됐는지 기억 (관전자는 null)
+  private wsAuthToken: string | null = null;
 
-  // ✅ server targets (원격 보간용)
+  // ✅ 토큰 변경으로 인한 의도된 close인지 (close 이벤트에서 reconnect 스케줄 방지)
+  private closingForReauth = false;
+
+  // render state (UI가 구독하는 맵)
+  public players = new Map<EvmAddress, PlayerState>();
+  public me: EvmAddress | null = null; // spectator면 null
+
+  // server targets (원격 보간용)
   private serverTargets = new Map<EvmAddress, PlayerState>();
 
   // manual input (키보드/드래그 조이스틱)
@@ -56,13 +62,13 @@ export class WorldService extends EventTarget {
   private inputDy = 0;
   private lastMoveSentAt = 0;
 
-  // ✅ 클릭/탭 이동 타겟
+  // 클릭/탭 이동 타겟
   private autoTarget: { x: number; y: number } | null = null;
 
   // chat queue (WS open 전 전송한 메시지 보장)
   private pendingChat: WorldWsClientMessage[] = [];
 
-  // ✅ profile-updated 이벤트 핸들러(바인딩 유지)
+  // profile-updated 이벤트 핸들러(바인딩 유지)
   private onProfileUpdatedEvent = (e: Event) => {
     const ce = e as CustomEvent;
     const account = ce?.detail?.account as EvmAddress | undefined;
@@ -83,36 +89,60 @@ export class WorldService extends EventTarget {
     if (this.started) return;
     this.started = true;
 
+    // 최초 접속 (토큰이 있으면 로그인, 없으면 관전)
     this.#syncAuth();
 
+    // ✅ 토큰 상태 변화에 따라 WS 인증 상태도 맞춰야 함
     tokenManager.on("signedIn", () => this.#syncAuth());
     tokenManager.on("signedOut", () => this.#syncAuth());
 
-    // ✅ 오버레이에서 dispatch한 이벤트를 받아서 서버로 알림
     window.addEventListener("world:profile-updated", this.onProfileUpdatedEvent as any);
   }
 
   stop() {
     this.started = false;
-    window.removeEventListener("world:profile-updated", this.onProfileUpdatedEvent as any); // ✅
+    window.removeEventListener("world:profile-updated", this.onProfileUpdatedEvent as any);
     this.disconnect();
   }
 
+  /**
+   * 연결 유지 정책:
+   * - 토큰이 없으면 spectator로 연결
+   * - 토큰이 생기거나 바뀌면: 기존 WS를 닫고 새 토큰 URL로 재연결
+   */
   connect() {
     this.desiredConnected = true;
     this.#ensureLoop();
 
-    if (this.socket && this.socket.readyState === WebSocket.OPEN) return;
+    const token = tokenManager.getToken(); // string | null
+    const nextAuthToken = token ?? null;
+
+    // 이미 소켓이 있고, "인증 토큰 상태"가 같으면 그대로 유지
+    if (this.socket) {
+      const rs = this.socket.readyState;
+
+      const sameAuth = this.wsAuthToken === nextAuthToken;
+
+      if ((rs === WebSocket.OPEN || rs === WebSocket.CONNECTING) && sameAuth) {
+        return;
+      }
+
+      // ✅ 토큰 상태가 달라졌는데 소켓이 살아있으면: 강제 재연결 필요
+      this.#closeSocketForReauth();
+    }
+
     if (this.connecting) return;
 
-    // ✅ token 없어도 spectator로 연결
-    const token = tokenManager.getToken(); // string | null
-    this.#connectWS(token ?? undefined);
+    // token 없어도 spectator로 연결
+    this.#connectWS(nextAuthToken ?? undefined);
   }
 
   disconnect() {
     this.desiredConnected = false;
     this.#clearReconnect();
+
+    this.closingForReauth = false;
+    this.wsAuthToken = null;
 
     if (this.socket) {
       try {
@@ -142,21 +172,21 @@ export class WorldService extends EventTarget {
     if (len > 1e-6) {
       this.inputDx = dx / len;
       this.inputDy = dy / len;
-      this.autoTarget = null; // ✅ 수동 입력이 있으면 자동 이동 취소
+      this.autoTarget = null; // 수동 입력이 있으면 자동 이동 취소
     } else {
       this.inputDx = 0;
       this.inputDy = 0;
     }
   }
 
-  /** ✅ 화면 클릭/탭 이동: 로그인 유저만 */
+  /** 화면 클릭/탭 이동: 로그인 유저만 */
   setMoveTarget(x: number, y: number) {
     if (!this.me) return;
     this.autoTarget = { x, y };
     this.#ensureLoop();
   }
 
-  /** ✅ 채팅 전송: 로그인 유저만 */
+  /** 채팅 전송: 로그인 유저만 */
   sendChat(text: string) {
     if (!tokenManager.getToken()) return;
 
@@ -172,7 +202,7 @@ export class WorldService extends EventTarget {
     this.#sendRaw(msg);
   }
 
-  /** ✅✅✅ 프로필 변경 전파(서버 → 전체 브로드캐스트 용) */
+  /** 프로필 변경 전파(서버 → 전체 브로드캐스트 용) */
   sendProfileUpdated() {
     const s = this.socket;
     if (!s || s.readyState !== WebSocket.OPEN) return;
@@ -182,8 +212,27 @@ export class WorldService extends EventTarget {
   /* ---------------- internal ---------------- */
 
   #syncAuth() {
-    // ✅ 로그인 여부와 관계없이 항상 connect해서 관전 가능
+    // 로그인 여부와 관계없이 항상 connect해서 관전 가능
+    // ✅ 단, 토큰 상태가 바뀌면 connect()가 내부에서 소켓 재연결 처리
     this.connect();
+  }
+
+  #closeSocketForReauth() {
+    this.#clearReconnect();
+
+    const s = this.socket;
+    if (!s) return;
+
+    // close 이벤트에서 reconnect 스케줄이 돌지 않게 플래그
+    this.closingForReauth = true;
+
+    // 현재 소켓 참조를 미리 끊어둠 (old close 이벤트가 새 소켓에 영향 주지 않게)
+    this.socket = null;
+    this.connecting = false;
+
+    try {
+      s.close();
+    } catch { }
   }
 
   #connectWS(token?: string) {
@@ -191,6 +240,9 @@ export class WorldService extends EventTarget {
 
     this.connecting = true;
     this.#clearReconnect();
+
+    // ✅ 이번 연결이 어떤 토큰 기반인지 기억
+    this.wsAuthToken = token ?? null;
 
     const wsUrl = buildWorldWsUrl(token);
 
@@ -207,6 +259,9 @@ export class WorldService extends EventTarget {
     this.socket = socket;
 
     socket.addEventListener("open", () => {
+      // 혹시 중간에 다른 소켓으로 갈아탄 경우 무시
+      if (this.socket !== socket) return;
+
       this.connecting = false;
       this.reconnectDelayMs = 1200;
       this.dispatchEvent(new CustomEvent("connect"));
@@ -215,10 +270,17 @@ export class WorldService extends EventTarget {
     });
 
     socket.addEventListener("message", (ev: MessageEvent) => {
+      if (this.socket !== socket) return;
       this.#handleWsMessage(ev.data);
     });
 
     socket.addEventListener("close", () => {
+      // ✅ 토큰 변경 때문에 일부러 닫은 경우: 여기서 reconnect 예약하지 않음
+      if (this.closingForReauth) {
+        this.closingForReauth = false;
+        return;
+      }
+
       if (this.socket === socket) this.socket = null;
       this.connecting = false;
 
@@ -229,6 +291,8 @@ export class WorldService extends EventTarget {
     });
 
     socket.addEventListener("error", (e: Event) => {
+      if (this.socket !== socket) return;
+
       this.dispatchEvent(new CustomEvent("error", { detail: e }));
       try {
         socket.close();
@@ -272,6 +336,7 @@ export class WorldService extends EventTarget {
       }
 
       const recentMessages = ((msg as any).recentMessages ?? []) as ChatRow[];
+
       this.dispatchEvent(
         new CustomEvent("init", {
           detail: { me: this.me, players: this.players, recentMessages },
@@ -322,8 +387,7 @@ export class WorldService extends EventTarget {
       return;
     }
 
-    // ✅✅✅ 핵심: 누가 프로필을 바꿨다는 서버 신호를 받으면
-    // 해당 account만 force refresh → 월드에서 update 이벤트로 appearance 적용됨
+    // 누가 프로필을 바꿨다는 서버 신호를 받으면 해당 account만 강제 refresh
     if ((msg as any).type === "profile_updated") {
       const account = (msg as any).account as EvmAddress;
       void globalProfileStore.ensure([account] as any, { force: true });
@@ -331,7 +395,9 @@ export class WorldService extends EventTarget {
     }
 
     if (msg.type === "error") {
-      this.dispatchEvent(new CustomEvent("error", { detail: new Error((msg as any).message) }));
+      this.dispatchEvent(
+        new CustomEvent("error", { detail: new Error((msg as any).message) })
+      );
       return;
     }
   }
@@ -352,7 +418,10 @@ export class WorldService extends EventTarget {
 
     const delay = this.reconnectDelayMs;
     this.reconnectTimer = window.setTimeout(() => {
-      this.reconnectDelayMs = Math.min(Math.floor(this.reconnectDelayMs * 1.6), 15000);
+      this.reconnectDelayMs = Math.min(
+        Math.floor(this.reconnectDelayMs * 1.6),
+        15000
+      );
 
       if (this.socket && this.socket.readyState === WebSocket.OPEN) return;
       if (this.connecting) return;
@@ -384,7 +453,7 @@ export class WorldService extends EventTarget {
     }
   }
 
-  /** ✅ 프레임 루프: (1) 내 이동(수동/자동) (2) 원격 보간 (3) move throttle */
+  /** 프레임 루프: (1) 내 이동(수동/자동) (2) 원격 보간 (3) move throttle */
   private loop(now: number) {
     if (!this.runningLoop) return;
 
@@ -399,7 +468,7 @@ export class WorldService extends EventTarget {
         let mdy = this.inputDy;
         let speed = LOCAL_MOVE_SPEED;
 
-        // ✅ 수동 입력이 없고 autoTarget이 있으면 그쪽으로 이동
+        // 수동 입력이 없고 autoTarget이 있으면 그쪽으로 이동
         if (mdx === 0 && mdy === 0 && this.autoTarget) {
           const tx = this.autoTarget.x;
           const ty = this.autoTarget.y;
@@ -423,11 +492,21 @@ export class WorldService extends EventTarget {
             if (step >= dist) {
               const dir =
                 Math.abs(mdx) > Math.abs(mdy)
-                  ? mdx > 0 ? "right" : "left"
-                  : mdy > 0 ? "down" : "up";
+                  ? mdx > 0
+                    ? "right"
+                    : "left"
+                  : mdy > 0
+                    ? "down"
+                    : "up";
 
               const updatedAt = Date.now();
-              const next: PlayerState = { account: this.me!, x: tx, y: ty, dir, updatedAt };
+              const next: PlayerState = {
+                account: this.me!,
+                x: tx,
+                y: ty,
+                dir,
+                updatedAt,
+              };
 
               this.players.set(this.me!, next);
               this.serverTargets.set(this.me!, next);
@@ -447,11 +526,21 @@ export class WorldService extends EventTarget {
 
           const dir =
             Math.abs(mdx) > Math.abs(mdy)
-              ? mdx > 0 ? "right" : "left"
-              : mdy > 0 ? "down" : "up";
+              ? mdx > 0
+                ? "right"
+                : "left"
+              : mdy > 0
+                ? "down"
+                : "up";
 
           const updatedAt = Date.now();
-          const next: PlayerState = { account: this.me, x: nx, y: ny, dir, updatedAt };
+          const next: PlayerState = {
+            account: this.me,
+            x: nx,
+            y: ny,
+            dir,
+            updatedAt,
+          };
 
           this.players.set(this.me, next);
           this.serverTargets.set(this.me, next);

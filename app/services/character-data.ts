@@ -141,10 +141,41 @@ export function getCharacterData(app: {
   image?: string;
 }): CharacterData {
   if (app.nftAddress === '0xE47E90C58F8336A2f24Bcd9bCB530e2e02E1E8ae') {
+
+    let id = app.tokenId;
+
+    // TODO: 아직 이미지가 준비되지 않음
+    if (
+      id === 13 ||
+      id === 1895 ||
+      id === 1897 ||
+      id === 1899 ||
+      id === 3771 ||
+      id === 3772 ||
+      id === 7620 ||
+      id === 7624 ||
+      id === 8547 ||
+      id === 8548 ||
+      id === 9150 ||
+      id === 9151 ||
+      id === 9152 ||
+      id === 9153 ||
+      id === 9154 ||
+      id === 9155 ||
+      id === 9156 ||
+      id === 9157 ||
+      id === 9158 ||
+      id === 9159) {
+      id = 0;
+    }
+
     return {
       src: `https://sigorworld.github.io/static-sigor-assets/characters/dogesoundclub-mates/${app.tokenId}.png`,
       ...dscCharacterData,
     }
+  } else if (app.nftAddress === '0x2B303fd0082E4B51e5A6C602F45545204bbbB4DC') {
+    // TODO: 이메이트의 경우 임시 캐릭터로
+    return defaultCharacterData
   } else if (app.nftAddress === '0xDeDd727ab86bce5D416F9163B2448860BbDE86d4') {
     const imageSrc = app.image ?? "";
     const parts = imageSrc.split("/");
@@ -165,7 +196,13 @@ export function getCharacterData(app: {
       ...sigorSparrowCharacterData,
     }
   } else if (app.nftAddress === '0x595b299Db9d83279d20aC37A85D36489987d7660') {
-    const bodyType = (app.parts?.Body ?? "").replace(/\s+/g, "").toLowerCase();
+    let bodyType = (app.parts?.Body ?? "").replace(/\s+/g, "").toLowerCase();
+
+    // TODO: 아직 준비되지 못함.
+    if (bodyType === 'pingpiggy') {
+      bodyType = 'nirgreendragon';
+    }
+
     return {
       src: `https://sigorworld.github.io/static-sigor-assets/characters/babyping/${bodyType}/spritesheet.png`,
       ...babypingCharacterData,
